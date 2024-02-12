@@ -19,15 +19,41 @@
     </header>
     <main>
         <section id="minifier">
-            <h2>Find function from truth table</h2>
-            <form onsubmit="event.preventDefault(); calculate()">
-                <input type="text" id="term" placeholder="001100110000xxxx">
-                <button>Calculate</button>
-                <a id="download" href="" style="display: none;">download .csv</a>
-                <div id="loader" style="display: none;"></div>
-            </form>
-            <p id="error" style="display: none;">Invalid value length</p>
-            <div id="result"></div>
+            <div id="tabbar">
+                <input type="radio" name="tabs" id="btn_single" style="display: none;" checked>
+                <input type="radio" name="tabs" id="btn_multi" style="display: none;">
+                <label for="btn_single" class="tab_btn"><span>Single</span></label>
+                <label for="btn_multi" class="tab_btn"><span>Multi</span></label>
+            </div>
+            <div class="p10">
+                <div id="tab_single">
+                    <h2>Find function from truth table</h2>
+                    <form onsubmit="event.preventDefault(); single()">
+                        <input type="text" id="term" placeholder="001100110000xxxx">
+                        <button>Calculate</button>
+                        <a id="download" href="" style="display: none;">download .csv</a>
+                        <div id="loader" style="display: none;"></div>
+                    </form>
+                    <p id="error" style="display: none;">Invalid value length</p>
+                    <div id="result"></div>
+                </div>
+                <div id="tab_multi">
+                    <h2>Solve a multi output module</h2>
+                    <form onsubmit="event.preventDefault(); multi()">
+                        <div class="flex_column">
+                            <div id="multi_field_group" class="flex_column"></div>
+                            <div>
+                                <input type="text" id="multi_new_field" placeholder="001100110000xxxx">
+                                <button>Calculate</button>
+                            </div>
+                        </div>
+                        <a id="download_multi" href="" style="display: none;">download .csv</a>
+                        <div id="loader_multi" style="display: none;"></div>
+                    </form>
+                    <p id="error_multi" style="display: none;">Invalid value length</p>
+                </div>
+                
+            </div>
         </section>
         <section id="example">
             <h2>How to use the minifier</h2>

@@ -1,14 +1,54 @@
 const worker = new Worker("js/worker.js");
+// const transmatrix = new Worker("js/transmatrix.js");
 const error = document.getElementById("error");
+const error_multi = document.getElementById("error_multi");
 const result = document.getElementById("result");
 const loader = document.getElementById("loader");
 const a_download = document.getElementById("download");
 const input_term = document.getElementById("term");
+const tabbar = document.getElementById("tabbar");
+const btn_single = document.getElementById("btn_single");
+const tab_single = document.getElementById("tab_single");
+const tab_multi = document.getElementById("tab_multi");
+const multi_new_field = document.getElementById("multi_new_field");
 
-function calculate(){
-    // Data validation
-    let term = input_term.value;
-    let varCount, maxDepth = 4;
+document.querySelectorAll("#tabbar input").forEach(tab => tab.addEventListener("click",switchTab));
+document.addEventListener("DOMContentLoaded", () => { 
+    switchTab(); 
+    if(multi_field_group.children.length == 0){
+        multi_field_group.style.display = "none";
+    }
+});
+function switchTab(){
+    if(btn_single.checked){
+        tab_single.classList.add("active");
+        tab_multi.classList.remove("active");
+    }else{
+        tab_single.classList.remove("active");
+        tab_multi.classList.add("active");
+    }
+}
+multi_new_field.addEventListener("input",function(){
+    const input = document.createElement("input");
+    input.classList.add("multi_output");
+    input.type = "text";
+    input.value = this.value;
+    multi_field_group.style.display = "flex";
+    multi_field_group.appendChild(input);
+    input.focus();
+    this.value = "";
+});
+multi_field_group.addEventListener("change",function(e){
+    if(e.target.value == ""){
+        e.target.remove();
+    }
+    if(multi_field_group.children.length == 0){
+        multi_new_field.focus();
+        multi_field_group.style.display = "none";
+    }
+});
+
+function validateTerm(term){
     switch (term.length) {
         case 4:
             varCount = 2;
@@ -18,19 +58,28 @@ function calculate(){
             break;
         case 16:
             varCount = 4;
-            maxDepth = 5;
             break;
         default:
-            error.style.display = "block";
-            error.innerHTML = "Invalid value length"; 
-            return;
+            throw new Error("Invalid value length");
     }
     if(!term.match(/^[01a-z]+$/)){
+        throw new Error("Use only 0 and 1");
+    }
+    return varCount;
+}
+
+function single(){
+    // Data validation
+    let term = input_term.value;
+    let varCount;
+    try {
+        varCount = validateTerm(term);
+    } 
+    catch (e) {
         error.style.display = "block";
-        error.innerHTML = "Use only 0 and 1";
+        error.innerHTML = e.message;
         return;
     }
-    // end of data validation
 
     result.innerHTML = "";
     error.style.display = "none";
@@ -44,12 +93,34 @@ function calculate(){
     worker.postMessage({
         action: 'search',
         varCount: varCount,
-        maxDepth: maxDepth,
+        maxDepth: varCount + 1,
         term: term,
         mask: mask
     });
 }
-var start;
+
+function multi(){
+    let terms = Array.from(document.querySelectorAll("#multi_field_group .multi_output"),a => a.value);
+    let varCount;
+
+    try {
+        varCount = validateTerm(terms[0]);
+        for(let i = 1; i < terms.length; i++){
+            if(varCount != validateTerm(terms[i])){
+                throw new Error("All terms must have the same length");
+            }
+        }
+    } 
+    catch (e) {
+        error_multi.style.display = "block";
+        error_multi.innerHTML = e.message;
+        return;
+    }
+    // TODO
+    
+}
+
+var start;// holds the testing start time
 function startTest(varCount,maxDepth){
     start = Date.now();
     worker.postMessage({

@@ -82,6 +82,54 @@ h3{
 }
 section{
     border: 10px solid transparent;
+    /* padding: 10px; */
+}
+#tabbar{
+    display: flex;
+}
+#tabbar label{
+    border-bottom: 10px solid transparent;
+    padding: 4px 8px;
+    cursor: pointer;
+}
+#tabbar label span{
+    font-size: clamp(0.8rem, 4vw + 1rem, 1.2rem);
+    font-family: andy, sans-serif;
+    color: #FFB000;
+    filter: url(assets/filter.svg#outlineM);
+    transition: color 0.2s;
+}
+#tabbar label:hover span{
+    color: #F3F302;
+}
+#btn_single:checked ~ label[for="btn_single"]{
+    border-right: 10px solid transparent;
+    border-image: url(assets/border_red.png) 16 round;
+}
+#btn_multi:checked ~ label[for="btn_multi"]{
+    border-left: 10px solid transparent;
+    border-right: 10px solid transparent;
+    border-image: url(assets/border_red.png) 16 round;
+}
+#tab_single, #tab_multi{
+    display: none;
+}
+#tab_single.active, #tab_multi.active{
+    display: grid;
+}
+
+#multi_new_field{
+    background-color: #ffffffb7;
+}
+#multi_new_field:focus{
+    background-color: #fff;
+}
+.flex_column{
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+.p10{
     padding: 10px;
 }
 #minifier{
@@ -109,12 +157,20 @@ mark.negation{
 }
 form{
     display: flex;
-    height: 25px;
     align-items: center;
 }
-form > :is(input, button){
+input{
+    font-family: monospace;
+}
+button{
+    cursor: pointer;
+}
+form :is(input, button){
     margin-right: 10px;
     padding: 2px 5px;
+    border: 1px solid #3a3a3a;
+    border-radius: 3px;
+    background-color: #fff;
 }
 
 @keyframes spin {
