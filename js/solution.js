@@ -43,7 +43,7 @@ multi_field_group.addEventListener("change",function(e){
         e.target.remove();
     }
     if(multi_field_group.children.length == 0){
-        multi_new_field.focus();
+        // multi_new_field.focus();
         multi_field_group.style.display = "none";
     }
 });

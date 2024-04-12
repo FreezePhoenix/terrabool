@@ -1,11 +1,26 @@
 importScripts("terms.js", "gates.js","dictionary.js");
 
 /**
+ * Creates the lookup table from dictionary.js
+ * @param {number} varCount: number of variables (2 to 4)
+ * @param {number} term: unused
+ * @param {number} mask: unused
+ * @param {Array.<{string, number}>} val: combinations of [Printable expression, Truth table value]
+ * @param {number} count: the number of terms in the expression
+ * @param {Array.<{number, number}>} solutions: array of [boolean function, min depth to solve]
+ */
+const testfunc = (varCount,term,mask,val,count,solutions) => {
+    for(let gate of Gates){
+        const term = gate.combine(val.map(a => a[1]),varCount);
+        solutions[term] = solutions[term] ? [term, Math.min(solutions[term][1], count)] : [term,count];
+    }
+}
+/**
  * Default validation function. Pushes valid text based expressions to the solutions array.
  * @param {number} varCount: number of variables (2 to 4)
  * @param {number} term: the term to be expressed
  * @param {number} mask: a mask taking care of don't cares
- * @param {Array.<{string, number}>} val: combinations of [Printable expression, Truth table value]
+ * @param {Array.<string, number>} val: combinations of [Printable expression, Truth table value]
  * @param {number} count: the number of terms in the expression
  * @param {string[]} solutions: the array of solutions
  */
@@ -72,21 +87,6 @@ onmessage = e => {
             }
         break;
         case "test":
-            /**
-             * Creates the lookup table from dictionary.js
-             * @param {number} varCount: number of variables (2 to 4)
-             * @param {number} term: unused
-             * @param {number} mask: unused
-             * @param {Array.<{string, number}>} val: combinations of [Printable expression, Truth table value]
-             * @param {number} count: the number of terms in the expression
-             * @param {Array.<{number, number}>} solutions: array of [boolean function, min depth to solve]
-             */
-            const testfunc = (varCount,term,mask,val,count,solutions) => {
-                for(let gate of Gates){
-                    const term = gate.combine(val.map(a => a[1]),varCount);
-                    solutions[term] = solutions[term] ? [term, Math.min(solutions[term][1], count)] : [term,count];
-                }
-            }
             const results = makeExpressionsBFS(e.data.varCount,e.data.maxDepth,0,0,testfunc);
             postMessage({action:"test",results:results});
         break;
