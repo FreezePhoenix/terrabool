@@ -62,7 +62,7 @@ function makeExpressionsBFS(varCount, maxDepth, term, mask, callback = identity)
 onmessage = e => {
     switch (e.data.action) {
         case "search":
-            const maskedDictionary = Dictionary.map(a => [(a[0] | e.data.mask), a[1]]);
+            const maskedDictionary = Dictionary[e.data.varCount-2].map(a => [(a[0] | e.data.mask), a[1]]);
             if(maskedDictionary.find(a => a[0] == e.data.term) || e.data.varCount < 4){ // double search is only meant for 4 variables
                 const results = makeExpressionsBFS(e.data.varCount,e.data.maxDepth,e.data.term,e.data.mask);
                 postMessage({action:"result",results:results});

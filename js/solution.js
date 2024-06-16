@@ -47,6 +47,16 @@ multi_field_group.addEventListener("change",function(e){
         multi_field_group.style.display = "none";
     }
 });
+function textLength(e){
+    const l = e.target.value.length;
+    if(l === 4 || l === 8 || l === 16){
+        e.target.style.color = "#00C8FF";
+    }else{
+        e.target.style.color = "black";
+    }
+}
+multi_field_group.addEventListener("input", e => textLength(e));
+input_term.addEventListener("input", e => textLength(e));
 
 function validateTerm(term){
     switch (term.length) {

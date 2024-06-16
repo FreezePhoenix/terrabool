@@ -1,16 +1,39 @@
-/*
-|                                    ~ ~ TIME AND MEMORY ESTIMATES ~ ~                                      |
-| outputs |            combinations            memory  | transition matrices    memory  |  time to compute  |
-|    4    | C(15,4)  =               1 365    ≈ 5KB    |            840        ≈ 3KB    |    2ms            |
-|    5    | C(31,5)  =             169 911    ≈ 663KB  |         83 328        ≈ 326KB  |    250ms          |
-|    6    | C(63,6)  =          67 945 521    ≈ 259MB  |     27 998 208        ≈ 106MB  |    3 min          |
-|    7    | C(127,7) =      94 525 795 200    ≈ 440GB  |                       ~ 180GB  |    est 3 days     |
-|    8    | C(255,8) = 409 663 695 276 000    ≈ 2608TB |                       ~ 1043TB |    est 36 years   |
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <script src="js/dictionary.js"></script>
+    <style>
+        table,tr,td{
+            border: 1px solid black;
+            border-collapse: collapse;
+            font-family: monospace;
+            font-size: 16px;
+        }
+        td{
+            width: 45px;
+            text-align: center;
+        }
+        .grid{
+            display: grid;
+            grid-template-columns: auto 1fr;
+            grid-gap: 10px;
+            margin: 10px;
+            padding: 10px;
+        }
+        span{
+            font-size: 1.5em;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
 
-SOLUTION: prune linear combination set (what the getGoodTerms function does) at the possible cost of missing some matrices 
-*/
+    <div id="content"></div>
 
-importScripts("dictionary.js");
+<script>
 /**
  * tests if a number is a power of two
  * @param {number} x 
@@ -106,7 +129,7 @@ function getGoodTerms(varCount, terms, mask=0){
  * @param {number} mask 
  * @returns {number[][]} Partially sorted transition matrices
  */
-function combinations(varCount, terms, mask=0, hardLimit=10000) {
+function combinations(varCount, terms, mask=0, hardLimit=50000) {
     const {linearCombinations, goodTermsMap} = getGoodTerms(varCount,terms,mask);
     let combination = new Array(terms.length).fill(0);
     const dim = goodTermsMap.size;
@@ -117,15 +140,26 @@ function combinations(varCount, terms, mask=0, hardLimit=10000) {
             idx--;
         } else if (idx === terms.length - 1) {
             // check the matrix
-            const lin_combinations = combination.map(a => linearCombinations[a]);
+            let lin_combinations = combination.map(a => linearCombinations[a]);
             if (isInvertible(lin_combinations)) {
                 const transitioned = transition(lin_combinations,terms);
-                const lampSum = transitioned.reduce((acc,term) => acc + goodTermsMap.get(term),0);
+                let res = [];
+                for(let term of transitioned){
+                    res.push([goodTermsMap.get(term),term]);
+                }
+                let lampSum = res.map(a => a[0]).reduce((a,b) => a+b,0);
+                
                 const inverse = getInverseMatrix(lin_combinations);
-
-                BigRes.push([lampSum,[inverse,transitioned]]);
-                if(BigRes.length >= hardLimit) return BigRes;
+                // TODO: remove table structure
+                let text = `<table>`;
+                for(let i in inverse){
+                    text += `<tr><td>${(inverse[i] + 2**terms.length).toString(2).substring(1).split('').join('</td><td>')}</td>`;
+                    text += `<td><table><tr><td>${res[i][0]}</td></tr><tr><td>${res[i][1].toString(2).padStart(16,'0')}</td></tr></table></td></tr>`;
+                }
+                text += `</table>`;
+                BigRes.push([lampSum,text]);
             }
+            if(BigRes.length >= hardLimit) return BigRes;
         } else {
             idx++;
             combination[idx] = combination[idx - 1];
@@ -135,11 +169,7 @@ function combinations(varCount, terms, mask=0, hardLimit=10000) {
     return BigRes;
 }
 
-/**
- * Finds the inverse matrix of a transition matrix
- * @param {number[]} lin_combinations Set of linear combinations
- * @returns {number[]} Inverse transition matrix
- */
+
 function getInverseMatrix(lin_combinations){
     found = 0;
     let inverse = new Array(lin_combinations.length).fill(0);
@@ -159,8 +189,40 @@ function getInverseMatrix(lin_combinations){
     return inverse;
 }
 
-onmessage = e => {
-    switch (e.data.action) {
+//// Hex seven segment driver
+// const terms = [
+//     0b1101111101110001,
+//     0b0010011110011111,
+//     0b0010111111111011,
+//     0b1111110101000101,
+//     0b1110111101111100,
+//     0b0111101101101101,
+//     0b1101011111101101,
+// ];
+// const mask = 0b0;
 
-    }
+// BCD to bin module
+const terms = [
+    0b0001100000000000,
+    0b0000011111110000,
+    0b0000011011001100,
+    0b0001010110101010
+];
+const mask = 0b1110000000000000;
+const varCount = 4;
+
+const goodTerms = getGoodTerms(varCount,terms,mask);
+console.log(goodTerms);
+
+const matrices = combinations(varCount,terms,mask);
+
+matrices.sort((a,b) => a[0] - b[0]);
+let txt = '';
+for(res of matrices){
+    txt += `<div class='grid'>${res[1]}<span>${res[0]}</span></div>`;
 }
+content.innerHTML += txt;
+
+</script>
+</body>
+</html>
