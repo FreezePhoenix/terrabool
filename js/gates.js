@@ -19,10 +19,10 @@ function Xor(numbers){
 }
 
 const Gates = [
-    {   
-        symbol:"⨀",
-        combine: (numbers,vcount) => negate(Xor(numbers),vcount)
-    },
+    // {   
+    //     symbol:"⨀",
+    //     combine: (numbers,vcount) => negate(Xor(numbers),vcount)
+    // },
     {   
         symbol:"⊕", 
         combine: (numbers) => Xor(numbers)
@@ -31,8 +31,8 @@ const Gates = [
         symbol:"∧",
         combine: (numbers) => numbers.reduce((a, b) => a & b)
     },
-    {   
-        symbol:"∨",
-        combine: (numbers) => numbers.reduce((a, b) => a | b)
-    },
+    // {   
+    //     symbol:"∨",
+    //     combine: (numbers) => numbers.reduce((a, b) => a | b)
+    // },
 ];

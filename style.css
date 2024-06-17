@@ -30,12 +30,14 @@ main, footer{
 }
 p{
     max-width: 70ch;
+    text-align: justify;
     padding-bottom: 10px;
 }
 #table_img{
     float: right;
     display: grid;
     gap: 10px;
+    padding-left: 10px;
 }
 #example_img{
     width: 200px;
@@ -155,7 +157,7 @@ mark.negation{
     height: 20px;
     animation: spin 1s linear infinite;
 }
-form{
+#multi_form{
     display: flex;
     align-items: center;
 }

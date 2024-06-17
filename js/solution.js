@@ -146,13 +146,13 @@ worker.onmessage = e => {
             loader.style.display = "none";
 
             if(e.data.results){
-                let csvContent = "data:text/csv;charset=utf-8,\uFEFF" + e.data.results.join("\n");
+                let csvContent = "data:text/csv;charset=utf-8,\uFEFF" + e.data.results.map(a => a[0]).join("\n");
                 let encodedUri = encodeURI(csvContent);
                 a_download.setAttribute("href", encodedUri);
                 a_download.setAttribute("download", input_term.value + ".csv");
                 a_download.style.display = "inline-block";
 
-                result.innerHTML = e.data.results.join("<br>");
+                result.innerHTML = e.data.results.map(a => a[0]).join("<br>");
             }else{
                 result.innerHTML = `Something went wrong. Please report this as a bug.`;
             }
@@ -162,10 +162,14 @@ worker.onmessage = e => {
             loader.style.display = "none";
 
             if(e.data.results1 && e.data.results2){
-                let array = [e.data.results1,e.data.results2];
-                array = array[0].map((_, colIndex) => array.map(row => row[colIndex])); // transpose
+                let [array1, array2] = [e.data.results1.map(a => a[0]),e.data.results2.map(a => a[0])];
+                let maxLength = Math.max(array1.length, array2.length);
+                let transposedArray = [];
+                for (let i = 0; i < maxLength; i++) {
+                    transposedArray[i] = [array1[i] ?? "", array2[i] ?? ""];
+                }
                 let csvContent = "data:text/csv;charset=utf-8,\uFEFF" 
-                + array.map(a => a.join(",")).join("\n");
+                                 + transposedArray.map(a => a.join(";")).join("\n");
 
                 let encodedUri = encodeURI(csvContent);
                 a_download.setAttribute("href", encodedUri);
@@ -173,8 +177,8 @@ worker.onmessage = e => {
                 a_download.style.display = "inline-block";
 
                 result.innerHTML = `<div class="double">
-                    <div>${e.data.results1.join("<br>")}</div>
-                    <div>${e.data.results2.join("<br>")}</div>
+                    <div>${e.data.results1.map(a => a[0]).join("<br>")}</div>
+                    <div>${e.data.results2.map(a => a[0]).join("<br>")}</div>
                 </div>`;
             }else{
                 result.innerHTML = `Something went wrong. Please report this as a bug.`;

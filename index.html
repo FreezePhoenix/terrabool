@@ -39,7 +39,7 @@
                 </div>
                 <div id="tab_multi">
                     <h2>Solve a multi output module</h2>
-                    <form onsubmit="event.preventDefault(); multi()">
+                    <form id="multi_form" onsubmit="event.preventDefault(); multi()">
                         <div class="flex_column">
                             <div id="multi_field_group" class="flex_column"></div>
                             <div>
@@ -85,17 +85,17 @@
             <h3>How to interpret a generated boolean function.</h3>
             <p>First, you must be familiar with logical operations AND(∧), OR(∨), NOT(¬), XOR(⊕), XNOR(⨀).</p>
             <p>There are two kinds of XOR used in this app. One is the "parity function" XOR, which will be used without the gate in Terraria, and is implied in the result by writing inputs right after eachother. The other is the "Turns on when exactly one lamp is active" XOR, which means that you have to use that gate in the game, denoted by <b>⊕</b>.</p>
-            <p>Using the function generated from the example table, we get "¬c&nbsp;⊕&nbsp;¬ac&nbsp;⊕&nbsp;¬cd&nbsp;⊕&nbsp;acd"</p>
+            <p>Using the function generated from the example table, we get "⊕(¬c,&nbsp;¬ac,&nbsp;¬cd,&nbsp;acd)"</p>
             <h3>Here's how this function translates into Terraria</h3>
-            <p><mark class="term"><mark class="negation">¬</mark>c</mark>
-            &nbsp;<mark class="gate">⊕</mark>&nbsp;
-            <mark class="term"><mark class="negation">¬</mark>ac</mark>
-            &nbsp;<mark class="gate">⊕</mark>&nbsp;
-            <mark class="term"><mark class="negation">¬</mark>cd</mark>
-            &nbsp;<mark class="gate">⊕</mark>&nbsp;
-            <mark class="term">acd</mark></p>
+            <p><b>
+                <mark class="gate">⊕</mark
+                >&nbsp;(<mark class="term"><mark class="negation">¬</mark>c</mark
+                >,&nbsp;<mark class="term"><mark class="negation">¬</mark>ac</mark
+                >,&nbsp;<mark class="term"><mark class="negation">¬</mark>cd</mark
+                >,&nbsp;<mark class="term">acd</mark>)
+            </b></p>
             <p>
-                <mark class="gate">The operation connecting the terms show which logic gate to use ingame.</mark><br>
+                <mark class="gate">The operation symbol shows which logic gate to use ingame. If there is a negation sign before it, the output needs to be inverted. Example: when the gate is in an "ON" state, a torch controlled by it should be "OFF"</mark><br>
                 <mark class="term">The terms show which inputs connect to a single logic gate lamp.</mark><br>
                 <mark class="negation">The negation sign in front of a term means that the gate lamp should be in an "ON" state</mark>
             </p>

@@ -106,7 +106,7 @@ function getGoodTerms(varCount, terms, mask=0){
  * @param {number} mask 
  * @returns {number[][]} Partially sorted transition matrices
  */
-function combinations(varCount, terms, mask=0, hardLimit=10000) {
+function combinations(varCount, terms, mask=0, hardLimit=1000) {
     const {linearCombinations, goodTermsMap} = getGoodTerms(varCount,terms,mask);
     let combination = new Array(terms.length).fill(0);
     const dim = goodTermsMap.size;

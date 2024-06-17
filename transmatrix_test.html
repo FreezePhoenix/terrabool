@@ -129,7 +129,7 @@ function getGoodTerms(varCount, terms, mask=0){
  * @param {number} mask 
  * @returns {number[][]} Partially sorted transition matrices
  */
-function combinations(varCount, terms, mask=0, hardLimit=50000) {
+function combinations(varCount, terms, mask=0, hardLimit=1000) {
     const {linearCombinations, goodTermsMap} = getGoodTerms(varCount,terms,mask);
     let combination = new Array(terms.length).fill(0);
     const dim = goodTermsMap.size;
@@ -189,26 +189,27 @@ function getInverseMatrix(lin_combinations){
     return inverse;
 }
 
-//// Hex seven segment driver
-// const terms = [
-//     0b1101111101110001,
-//     0b0010011110011111,
-//     0b0010111111111011,
-//     0b1111110101000101,
-//     0b1110111101111100,
-//     0b0111101101101101,
-//     0b1101011111101101,
-// ];
-// const mask = 0b0;
-
-// BCD to bin module
+// Hex seven segment driver
 const terms = [
-    0b0001100000000000,
-    0b0000011111110000,
-    0b0000011011001100,
-    0b0001010110101010
+    0b1101111101110001,
+    0b0010011110011111,
+    0b0010111111111011,
+    0b1111110101000101,
+    0b1110111101111100,
+    0b0111101101101101,
+    0b1101011111101101,
 ];
-const mask = 0b1110000000000000;
+const mask = 0b0;
+
+// // BCD to bin module
+// const terms = [
+//     0b0001100000000000,
+//     0b0000011111110000,
+//     0b0000011011001100,
+//     0b0001010110101010
+// ];
+// const mask = 0b1110000000000000;
+
 const varCount = 4;
 
 const goodTerms = getGoodTerms(varCount,terms,mask);

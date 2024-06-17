@@ -11,7 +11,9 @@ importScripts("terms.js", "gates.js","dictionary.js");
  */
 const testfunc = (varCount,term,mask,val,count,solutions) => {
     for(let gate of Gates){
-        const term = gate.combine(val.map(a => a[1]),varCount);
+        let term = gate.combine(val.map(a => a[1]),varCount);
+        solutions[term] = solutions[term] ? [term, Math.min(solutions[term][1], count)] : [term,count];
+        term = negate(term,varCount);
         solutions[term] = solutions[term] ? [term, Math.min(solutions[term][1], count)] : [term,count];
     }
 }
@@ -25,9 +27,21 @@ const testfunc = (varCount,term,mask,val,count,solutions) => {
  * @param {string[]} solutions: the array of solutions
  */
 const identity = (varCount,term,mask,val,count,solutions) => {
-    for(let gate of Gates){
-        if ((gate.combine(val.map(a => a[1]),varCount) | mask) == term)
-            solutions.push(val.map(a => a[0]).join(gate.symbol)); // valid expression found. add it to solutions
+    if (count === 1){
+        if ((val[0][1] | mask) == term){
+            solutions.push([val[0][0], val[0][2]]);
+        }
+    }else{
+        for(let gate of Gates){
+            const t = gate.combine(val.map(a => a[1]),varCount);
+            if ((t | mask) == term){
+                // valid expression found. add it to solutions
+                solutions.push([`${gate.symbol}(${val.map(a => a[0]).join(', ')})`, val.map(a => a[2])]);
+            }
+            else if ((negate(t,varCount) | mask) == term){
+                solutions.push([`¬${gate.symbol}(${val.map(a => a[0]).join(', ')})`, val.map(a => a[2])]);
+            }
+        }
     }
 }
 /**
