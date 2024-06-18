@@ -30,7 +30,7 @@
                     <h2>Find function from truth table</h2>
                     <form onsubmit="event.preventDefault(); single()">
                         <input type="text" id="term" placeholder="001100110000xxxx">
-                        <button>Calculate</button>
+                        <button>Start</button>
                         <a id="download" href="" style="display: none;">download .csv</a>
                         <div id="loader" style="display: none;"></div>
                     </form>
@@ -42,15 +42,22 @@
                     <form id="multi_form" onsubmit="event.preventDefault(); multi()">
                         <div class="flex_column">
                             <div id="multi_field_group" class="flex_column"></div>
+                            <input type="text" id="multi_new_field" placeholder="001100110000xxxx">
                             <div>
-                                <input type="text" id="multi_new_field" placeholder="001100110000xxxx">
-                                <button>Calculate</button>
+                                <label for="hardlimit">Limit</label>
+                                <input type="number" id="hardlimit" value="1000" step="1000" min="1000">
+                                <button class="inline" type="submit">Start</button>
                             </div>
                         </div>
-                        <a id="download_multi" href="" style="display: none;">download .csv</a>
-                        <div id="loader_multi" style="display: none;"></div>
+                        <div id="multi_compute" class="flex_column" style="display: none;">
+                            <a id="download_multi" href="" style="display: none;">download .csv</a>
+                            <div id="loader_multi" style="display: none;"></div>
+                            <div id="multi_progress"></div>
+                            <button id="multi_abort" onclick="event.preventDefault(); abort()">Abort</button>
+                        </div>
                     </form>
                     <p id="error_multi" style="display: none;">Invalid value length</p>
+                    <div id="result_multi"></div>
                 </div>
                 
             </div>

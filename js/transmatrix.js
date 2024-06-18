@@ -112,6 +112,7 @@ function combinations(varCount, terms, mask=0, hardLimit=1000) {
     const dim = goodTermsMap.size;
     let idx = 0;
     let BigRes = [];
+    let tested = 0;
     while (idx >= 0) {
         if (combination[idx] >= dim) {
             idx--;
@@ -123,9 +124,11 @@ function combinations(varCount, terms, mask=0, hardLimit=1000) {
                 const lampSum = transitioned.reduce((acc,term) => acc + goodTermsMap.get(term),0);
                 const inverse = getInverseMatrix(lin_combinations);
 
-                BigRes.push([lampSum,[inverse,transitioned]]);
-                if(BigRes.length >= hardLimit) return BigRes;
+                BigRes.push([lampSum,inverse,transitioned]);
             }
+            tested++;
+            postMessage({action:"count",count:`${BigRes.length}/${tested}`});
+            if(BigRes.length >= hardLimit) return BigRes;
         } else {
             idx++;
             combination[idx] = combination[idx - 1];
@@ -153,14 +156,20 @@ function getInverseMatrix(lin_combinations){
         if(powerOfTwo(term)) {
             inverse[Math.log2(term)] = i;
             found++;
+            if(found == lin_combinations.length) break;
         }
-        if(found == lin_combinations.length) break;
     }
     return inverse;
 }
 
 onmessage = e => {
     switch (e.data.action) {
-
+        case "generate":
+            const matrices = combinations(e.data.varCount,e.data.terms,e.data.mask, e.data.hardLimit);
+            matrices.sort((a,b) => a[0] - b[0]);
+            postMessage({action:"matrices",results:matrices});
+            break;
+        default:
+            break;
     }
 }

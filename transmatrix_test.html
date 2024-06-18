@@ -172,35 +172,44 @@ function combinations(varCount, terms, mask=0, hardLimit=1000) {
 
 function getInverseMatrix(lin_combinations){
     found = 0;
-    let inverse = new Array(lin_combinations.length).fill(0);
+    let inverse = new Array(lin_combinations.length).fill([0,Infinity]);
     for (let i = 1; i < 2**lin_combinations.length;i++){
         let term = 0;
         let bitmask = 1;
-        for(let j = 0; j < lin_combinations.length; j++){
-            if((i&bitmask) != 0) term ^= lin_combinations[j];
+        let setBits = 0;
+        for(let combi of lin_combinations){
+            if((i&bitmask) != 0) {
+                term ^= combi;
+                setBits++;
+            }
             bitmask <<= 1;
         }
-        if(powerOfTwo(term)) {
-            inverse[Math.log2(term)] = i;
-            found++;
+        if(powerOfTwo(term) ) {
+            const idx = Math.log2(term);
+            if(setBits < inverse[idx][1]) 
+                inverse[idx] = [i,setBits];
         }
-        if(found == lin_combinations.length) break;
     }
-    return inverse;
+    return inverse.map(a => a[0]);
 }
 
 // Hex seven segment driver
-const terms = [
-    0b1101111101110001,
-    0b0010011110011111,
-    0b0010111111111011,
-    0b1111110101000101,
-    0b1110111101111100,
-    0b0111101101101101,
-    0b1101011111101101,
-];
+// const terms = [
+//     0b1101111101110001,
+//     0b0010011110011111,
+//     0b0010111111111011,
+//     0b1111110101000101,
+//     0b1110111101111100,
+//     0b0111101101101101,
+//     0b1101011111101101,
+// ];
 const mask = 0b0;
 
+const terms = [
+    0b1111111100000000,
+    0b0000000011111111,
+    0b0000000000000001,
+];
 // // BCD to bin module
 // const terms = [
 //     0b0001100000000000,

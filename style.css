@@ -131,6 +131,12 @@ section{
     flex-direction: column;
     gap: 10px;
 }
+.inline{
+    display: inline-block;
+}
+.flex_column.inline{
+    display: inline-flex;
+}
 .p10{
     padding: 10px;
 }
@@ -149,7 +155,7 @@ mark.gate{
 mark.negation{
     background-color: #004cff77;
 }
-#loader{
+#loader, #loader_multi{
     border-radius: 50%;
     border: 5px solid #ffffff00;
     border-top: 5px solid #3498db;
@@ -161,7 +167,10 @@ mark.negation{
     display: flex;
     align-items: center;
 }
-input{
+#hardlimit{
+    width: 80px;
+}
+form  :is(input, label, button), #multi_progress{
     font-family: monospace;
 }
 button{
