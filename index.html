@@ -1,20 +1,27 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="icon" href="assets/favicon.ico" type="image/x-icon">
     <link rel="stylesheet" href="style.css">
+    <link rel="modulepreload" href="js/worker/worker.js">
+    <link rel="modulepreload" href="js/worker/transmatrix.js">
     <title>TerraBool - A Terraria boolean function minifier</title>
 </head>
+
 <body>
     <header>
         <h1>TerraBool</h1>
         <h2 role="doc-subtitle">A Terraria boolean function minifier</h2>
         <section>
             <h2>About</h2>
-            <p>This app is made to exploit how logic gates and wires behave in Terraria. The main property being how signals don't necessarily turn on a device when power is provided, but rather toogle the on/off state. This property can be used to make circuits, that maximizes use of XOR logic, as connecting two wires together is the same as putting them through an XOR gate.</p>
+            <p>This app is made to exploit how logic gates and wires behave in Terraria. The main property being how
+                signals don't necessarily turn on a device when power is provided, but rather toogle the on/off state.
+                This property can be used to make circuits, that maximizes use of XOR logic, as connecting two wires
+                together is the same as putting them through an XOR gate.</p>
         </section>
     </header>
     <main>
@@ -28,7 +35,7 @@
             <div class="p10">
                 <div id="tab_single">
                     <h2>Find function from truth table</h2>
-                    <form onsubmit="event.preventDefault(); single()">
+                    <form id="single_form">
                         <input type="text" id="term" placeholder="001100110000xxxx">
                         <button>Start</button>
                         <a id="download" href="" style="display: none;">download .csv</a>
@@ -39,13 +46,13 @@
                 </div>
                 <div id="tab_multi">
                     <h2>Solve a multi output module</h2>
-                    <form id="multi_form" onsubmit="event.preventDefault(); multi()">
+                    <form id="multi_form">
                         <div class="flex_column">
                             <div id="multi_field_group" class="flex_column"></div>
                             <input type="text" id="multi_new_field" placeholder="001100110000xxxx">
                             <div>
                                 <label for="hardlimit">Limit</label>
-                                <input type="number" id="hardlimit" value="1000" step="1000" min="1000">
+                                <input type="number" id="hardlimit" value="20" step="10" min="10">
                                 <button class="inline" type="submit">Start</button>
                             </div>
                         </div>
@@ -53,13 +60,17 @@
                             <a id="download_multi" href="" style="display: none;">download .csv</a>
                             <div id="loader_multi" style="display: none;"></div>
                             <div id="multi_progress"></div>
-                            <button id="multi_abort" onclick="event.preventDefault(); abort()">Abort</button>
+                            <button id="multi_abort">Abort</button>
                         </div>
                     </form>
                     <p id="error_multi" style="display: none;">Invalid value length</p>
-                    <div id="result_multi"></div>
+                    <div id="result_multi">
+                        <div id=""></div>
+                        <button id="result_multi_prev">prev</button>
+                        <button id="result_multi_next">next</button>
+                    </div>
                 </div>
-                
+
             </div>
         </section>
         <section id="example">
@@ -86,39 +97,54 @@
                 </table>
                 <img id="example_img" src="img/example.gif" alt="ingame example of the function">
             </div>
-            
-            
-            <p>Type in the output values for the function as a binary number. The given truth table would be entered as <i>xxx0011011001100</i>. (The x'es are don't cares.)</p>
+
+
+            <p>Type in the output values for the function as a binary number. The given truth table would be entered as
+                <i>xxx0011011001100</i>. (The x'es are don't cares.)</p>
             <h3>How to interpret a generated boolean function.</h3>
             <p>First, you must be familiar with logical operations AND(∧), OR(∨), NOT(¬), XOR(⊕), XNOR(⨀).</p>
-            <p>There are two kinds of XOR used in this app. One is the "parity function" XOR, which will be used without the gate in Terraria, and is implied in the result by writing inputs right after eachother. The other is the "Turns on when exactly one lamp is active" XOR, which means that you have to use that gate in the game, denoted by <b>⊕</b>.</p>
+            <p>There are two kinds of XOR used in this app. One is the "parity function" XOR, which will be used without
+                the gate in Terraria, and is implied in the result by writing inputs right after eachother. The other is
+                the "Turns on when exactly one lamp is active" XOR, which means that you have to use that gate in the
+                game, denoted by <b>⊕</b>.</p>
             <p>Using the function generated from the example table, we get "⊕(¬c,&nbsp;¬ac,&nbsp;¬cd,&nbsp;acd)"</p>
             <h3>Here's how this function translates into Terraria</h3>
             <p><b>
-                <mark class="gate">⊕</mark
-                >&nbsp;(<mark class="term"><mark class="negation">¬</mark>c</mark
-                >,&nbsp;<mark class="term"><mark class="negation">¬</mark>ac</mark
-                >,&nbsp;<mark class="term"><mark class="negation">¬</mark>cd</mark
-                >,&nbsp;<mark class="term">acd</mark>)
-            </b></p>
+                    <mark class="gate">⊕</mark>&nbsp;(<mark class="term"><mark
+                            class="negation">¬</mark>c</mark>,&nbsp;<mark class="term"><mark
+                            class="negation">¬</mark>ac</mark>,&nbsp;<mark class="term"><mark
+                            class="negation">¬</mark>cd</mark>,&nbsp;<mark class="term">acd</mark>)
+                </b></p>
             <p>
-                <mark class="gate">The operation symbol shows which logic gate to use ingame. If there is a negation sign before it, the output needs to be inverted. Example: when the gate is in an "ON" state, a torch controlled by it should be "OFF"</mark><br>
+                <mark class="gate">The operation symbol shows which logic gate to use ingame. If there is a negation
+                    sign before it, the output needs to be inverted. Example: when the gate is in an "ON" state, a torch
+                    controlled by it should be "OFF"</mark><br>
                 <mark class="term">The terms show which inputs connect to a single logic gate lamp.</mark><br>
-                <mark class="negation">The negation sign in front of a term means that the gate lamp should be in an "ON" state</mark>
+                <mark class="negation">The negation sign in front of a term means that the gate lamp should be in an
+                    "ON" state</mark>
             </p>
             <p>
-                Not all functions can be expressed with a single logic gate. In these cases, the app will list functions in two columns. choose one from each column, create the two gates ingame, and combine their outputs with a common wire.
+                Not all functions can be expressed with a single logic gate. In these cases, the app will list functions
+                in two columns. choose one from each column, create the two gates ingame, and combine their outputs with
+                a common wire.
             </p>
             <h3>(November 2023 update) This version now lists all equivalent functions!</h3>
             <p>
-                When making multi-output modules, the first result rarely has no wire routing issues. This is why the app now lists all equivalent functions, so you can choose the one that works best for you.
+                When making multi-output modules, the first result rarely has no wire routing issues. This is why the
+                app now lists all equivalent functions, so you can choose the one that works best for you.
             </p>
         </section>
     </main>
     <footer>
-        
+
     </footer>
-    <script src="js/dictionary.js"></script>
-    <script src="js/solution.js"></script>    
+    <script type="module">
+        import {single, multi, startTest} from './js/main.js';
+
+        window.single = single;
+        window.multi = multi;
+        window.startTest = startTest;
+    </script>
 </body>
+
 </html>

@@ -193,7 +193,7 @@ function getInverseMatrix(lin_combinations){
     return inverse.map(a => a[0]);
 }
 
-// Hex seven segment driver
+// // Hex seven segment driver
 // const terms = [
 //     0b1101111101110001,
 //     0b0010011110011111,
@@ -203,13 +203,19 @@ function getInverseMatrix(lin_combinations){
 //     0b0111101101101101,
 //     0b1101011111101101,
 // ];
-const mask = 0b0;
 
 const terms = [
-    0b1111111100000000,
-    0b0000000011111111,
-    0b0000000000000001,
+    0b1111111011001000,
+    0b1100100100110110,
+    0b1010010110100101,
 ];
+const mask = 0b0;
+
+// const terms = [
+//     0b1111111100000000,
+//     0b0000000011111111,
+//     0b0000000000000001,
+// ];
 // // BCD to bin module
 // const terms = [
 //     0b0001100000000000,
