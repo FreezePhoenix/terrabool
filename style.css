@@ -45,6 +45,8 @@ p{
 table,tr,td,th{
     border-collapse: collapse;
     text-align: center;
+    font-family: monospace;
+    font-size: 16px;
     padding: 0 4px;
 }
 tr{
@@ -203,4 +205,25 @@ form :is(input, button){
     border-image: url(assets/border_blue.png) 16 round;
     padding: 10px;
     margin: 10px auto;
+}
+#result_multi_prev, #result_multi_next{
+    padding: 2px 5px;
+    margin-top: 10px;
+}
+
+#displayed_matrix td {
+    width: 20px;
+    text-align: center;
+}
+
+#displayed_matrix  .grid {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    grid-gap: 10px;
+    margin-top: 10px;
+}
+
+#displayed_matrix span {
+    font-size: 1.5em;
+    font-weight: bold;
 }

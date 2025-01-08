@@ -5,13 +5,11 @@ import { Dictionary } from "../data/dictionary.js";
 /**
  * Creates the lookup table from dictionary.js
  * @param {number} varCount: number of variables (2 to 4)
- * @param {number} term: unused
- * @param {number} mask: unused
  * @param {Array.<{string, number}>} val: combinations of [Printable expression, Truth table value]
  * @param {number} count: the number of terms in the expression
  * @param {Array.<{number, number}>} solutions: array of [boolean function, min depth to solve]
  */
-const testfunc = (varCount, term, mask, val, count, solutions) => {
+const testfunc = ({ varCount, val, count, solutions }) => {
   for (let gate of Gates) {
     let term = gate.combine(
       val.map((a) => a[1]),
@@ -26,6 +24,7 @@ const testfunc = (varCount, term, mask, val, count, solutions) => {
       : [term, count];
   }
 };
+
 /**
  * Default validation function. Pushes valid text based expressions to the solutions array.
  * @param {number} varCount: number of variables (2 to 4)
@@ -35,7 +34,7 @@ const testfunc = (varCount, term, mask, val, count, solutions) => {
  * @param {number} count: the number of terms in the expression
  * @param {string[]} solutions: the array of solutions
  */
-const identity = (varCount, term, mask, val, count, solutions) => {
+const identity = ({ varCount, term, mask, val, count, solutions }) => {
   if (count === 1) {
     if ((val[0][1] | mask) == term) {
       solutions.push([val[0][0], val[0][2]]);
@@ -61,6 +60,7 @@ const identity = (varCount, term, mask, val, count, solutions) => {
     }
   }
 };
+
 /**
  * Generates all possible expressions for a given term, combinations generated in breadth-first-like order.
  * @param {number} varCount: number of variables (2 to 4)
@@ -85,7 +85,14 @@ function makeExpressionsBFS({
   while (queue.length > 0) {
     let { val, idx, count } = queue.shift();
 
-    callback(varCount, term, mask, val, count, solutions);
+    callback({
+      varCount: varCount,
+      term: term,
+      mask: mask,
+      val: val,
+      count: count,
+      solutions: solutions,
+    });
 
     if (count < maxDepth) {
       for (let i = idx + 1; i < legalTerms.length; i++) {

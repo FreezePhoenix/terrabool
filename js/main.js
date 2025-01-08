@@ -1,7 +1,7 @@
 import UI from "./state/handler.js";
 
-let worker = new Worker("./js/worker/worker.js", {type: "module"});
-let transmatrix = new Worker("./js/worker/transmatrix.js", {type: "module"});
+let worker = new Worker("./js/worker/worker.js", { type: "module" });
+let transmatrix = new Worker("./js/worker/transmatrix.js", { type: "module" });
 UI.init({
   onSingle: single,
   onMulti: multi,
@@ -10,98 +10,86 @@ UI.init({
   onPrev: prev,
 });
 
-function validateTerm(term) {
-  let varCount = 2;
-  switch (term.length) {
-    case 4:
-      varCount = 2;
-      break;
-    case 8:
-      varCount = 3;
-      break;
-    case 16:
-      varCount = 4;
-      break;
-    default:
-      throw new Error("Invalid value length");
-  }
-  if (!term.match(/^[01a-z]+$/)) {
-    throw new Error("Use only 0 and 1");
-  }
-  return varCount;
-}
-
 export function single() {
-  // Data validation
-  let term = UI.getSingleTermValue();
-  let varCount;
+  const term = UI.getSingleTermValue();
+
   try {
-    varCount = validateTerm(term);
+    const varCount = term.getValidTermSize();
+    // Separate don't cares from the term, reformat as integers.
+    const mask = term.parseMask();
+
+    UI.onStartSingleEvent();
+
+    worker.postMessage({
+      action: "search",
+      varCount: varCount,
+      maxDepth: varCount + 1,
+      term: term.parseTerm(),
+      mask: mask,
+    });
   } catch (e) {
     UI.showError(e.message);
-    return;
   }
-
-  UI.onStartSingleEvent();
-
-  // Separate don't cares from the term, reformat as integers.
-  let mask = parseInt(
-    term.replace(/[1a-z]/g, (a) => (a == "1" ? "0" : "1")),
-    2
-  );
-  term = parseInt(term.replace(/[a-z]/g, "1"), 2);
-
-  worker.postMessage({
-    action: "search",
-    varCount: varCount,
-    maxDepth: varCount + 1,
-    term: term,
-    mask: mask,
-  });
 }
 
 export function multi() {
   let terms = UI.getMultiTermsValues();
-  let varCount,
-    mask,
-    hardLimit = UI.getMultiLimit();
+  const hardLimit = UI.getMultiLimit();
 
   try {
-    varCount = validateTerm(terms[0]);
-    mask = parseInt(
-      terms[0].replace(/[1a-z]/g, (a) => (a == "1" ? "0" : "1")),
-      2
-    );
+    const varCount = terms[0].getValidTermSize();
+    const mask = terms[0].parseMask();
     for (let i = 1; i < terms.length; i++) {
-      if (varCount != validateTerm(terms[i])) {
+      if (varCount != terms[i].getValidTermSize()) {
         throw new Error("All terms must have the same length");
       }
-      if (
-        mask !=
-        parseInt(
-          terms[i].replace(/[1a-z]/g, (a) => (a == "1" ? "0" : "1")),
-          2
-        )
-      ) {
+      if (mask != terms[i].parseMask()) {
         throw new Error("All terms must have the same don't cares");
       }
     }
-    terms = terms.map((a) => parseInt(a.replace(/[a-z]/g, "1"), 2));
+    terms = terms.map((term) => term.parseTerm());
+
+    UI.onStartMultiEvent();
+
+    transmatrix.postMessage({
+      action: "generate",
+      varCount: varCount,
+      terms: terms,
+      mask: mask,
+      hardLimit: hardLimit,
+    });
   } catch (e) {
     UI.showMultiError(e.message);
-    return;
+  }
+}
+
+String.prototype.getValidTermSize = function () {
+  if (!this.match(/^[01a-z]+$/)) {
+    throw new Error("Use only 0, 1 and lower case letters");
   }
 
-  UI.onStartMultiEvent();
+  switch (this.length) {
+    case 4:
+      return 2;
+    case 8:
+      return 3;
+    case 16:
+      return 4;
+    default:
+      throw new Error("Invalid value length");
+  }
+};
 
-  transmatrix.postMessage({
-    action: "generate",
-    varCount: varCount,
-    terms: terms,
-    mask: mask,
-    hardLimit: hardLimit,
-  });
-}
+String.prototype.parseTerm = function () {
+  return parseInt(this.replace(/[a-z]/g, "1"), 2);
+};
+
+String.prototype.parseMask = function () {
+  return parseInt(
+    this.replace(/[1a-z]/g, (a) => (a == "1" ? "0" : "1")),
+    2
+  );
+};
 
 var testStartTime;
 export function startTest(varCount, maxDepth) {
@@ -113,15 +101,16 @@ export function startTest(varCount, maxDepth) {
   });
 }
 
+// Single input worker. Generates terms.
 worker.onmessage = (e) => {
   switch (e.data.action) {
     case "result":
       UI.onSingleResultEvent();
 
       if (e.data.results) {
-        let csvContent =
+        const csvContent =
           "data:text/csv;charset=utf-8,\uFEFF" +
-          e.data.results.map((a) => a[0]).join("\n");
+          e.data.results.map((a) => `"${a[0]}"`).join("\n");
         UI.setDownload(encodeURI(csvContent));
 
         UI.setResultSingle(e.data.results);
@@ -134,20 +123,22 @@ worker.onmessage = (e) => {
       UI.onSingleResultEvent();
 
       if (e.data.results1 && e.data.results2) {
-        let [array1, array2] = [
+        // Make a csv file where the results are in two columns.
+        const [array1, array2] = [
           e.data.results1.map((a) => a[0]),
           e.data.results2.map((a) => a[0]),
         ];
-        let maxLength = Math.max(array1.length, array2.length);
+        const maxLength = Math.max(array1.length, array2.length);
         let transposedArray = [];
         for (let i = 0; i < maxLength; i++) {
-          transposedArray[i] = [array1[i] ?? "", array2[i] ?? ""];
+          transposedArray[i] = [`"${array1[i] ?? ""}"`, `"${array2[i] ?? ""}"`];
         }
-        let csvContent =
+        const csvContent =
           "data:text/csv;charset=utf-8,\uFEFF" +
-          transposedArray.map((a) => a.join(";")).join("\n");
+          transposedArray.map((a) => a.join(",")).join("\n");
         UI.setDownload(encodeURI(csvContent));
 
+        // Display results.
         UI.setResultDouble(e.data.results1, e.data.results2);
       } else {
         UI.setResultUnexpectedError();
@@ -161,7 +152,13 @@ worker.onmessage = (e) => {
       break;
   }
 };
-let index, matrices;
+
+let index = 0;
+let matrices = JSON.parse(localStorage.getItem("matrices"));
+UI.setNextPrevState(index, matrices);
+if (matrices != null) UI.displayMatrix(matrices[index]);
+
+// Multi input worker. Generates transition matrices.
 transmatrix.onmessage = (e) => transmatrix_onmessage(e);
 function transmatrix_onmessage(e) {
   switch (e.data.action) {
@@ -172,7 +169,8 @@ function transmatrix_onmessage(e) {
         localStorage.setItem("matrices", JSON.stringify(e.data.results));
         matrices = e.data.results;
         index = 0;
-        display();
+        UI.setNextPrevState(index, matrices);
+        UI.displayMatrix(matrices[index]);
       }
       break;
     case "count":
@@ -180,16 +178,22 @@ function transmatrix_onmessage(e) {
       break;
   }
 }
+
 function next() {
-  if (index < matrices.length) index++;
-  display();
+  if (matrices != null && index < matrices.length - 1)
+    index++;
+  UI.setNextPrevState(index, matrices);
+  UI.displayMatrix(matrices[index]);
 }
+
 function prev() {
   if (index > 0) index--;
-  display();
+  UI.setNextPrevState(index, matrices);
+  UI.displayMatrix(matrices[index]);
 }
+
 function display() {
-  if (matrices[index][2].length <= 4) {
+  if (matrices[index].rows.length <= 4) {
     // 4x4 matrix or smaller. Trivial to wire outputs
   } else {
     // The bigger the matrix, the harder to wire outputs.
@@ -203,9 +207,10 @@ function display() {
     //
   }
 }
+
 export function abort() {
   transmatrix.terminate();
-  transmatrix = new Worker("./js/worker/transmatrix.js", {type: "module"});
+  transmatrix = new Worker("./js/worker/transmatrix.js", { type: "module" });
   transmatrix.onmessage = (e) => transmatrix_onmessage(e);
   UI.onMultiResultEvent();
 }

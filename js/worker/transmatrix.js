@@ -22,16 +22,15 @@ function isPowerOfTwo(x) {
 }
 
 /**
- * tests if a set of rows is linearly independent in GF(2)
+ * Tests if the matrix is invertible by checking the rows are linearly independent in GF(2).
  * @param {number[]} rows
  * @returns {boolean}
  */
 function isInvertible(rows, pad = 2 ** rows.length) {
-  let term, bitmask;
   for (let i = 3; i < pad; i++) {
     if (isPowerOfTwo(i)) continue; // skip a trivial combination
-    term = 0;
-    bitmask = 1;
+    let term = 0;
+    let bitmask = 1;
     for (let j = 0; j < rows.length; j++) {
       if ((i & bitmask) != 0) term ^= rows[j];
       bitmask <<= 1;
@@ -42,7 +41,7 @@ function isInvertible(rows, pad = 2 ** rows.length) {
 }
 
 /**
- * Performs a GF(2) transition on a set of terms using a transition matrix
+ * Performs a GF(2) transition on a set of terms using a transition matrix.
  * @param {number[]} rows: The rows of the transition matrix
  * @param {number[]} terms: The terms to be transitioned
  * @returns {number[]} Transitioned terms
@@ -84,17 +83,13 @@ function getGoodTerms({ varCount, terms, mask = 0 }) {
   let precursorTerms = [];
 
   // Test all linear combinations.
-  for (
-    let currentCombination = 1;
-    currentCombination < 2 ** terms.length;
-    currentCombination++
-  ) {
+  for (let combination = 1; combination < 2 ** terms.length; combination++) {
     let bitmask = 0b1;
     let precursor = 0b0;
 
     for (let term of terms) {
       // Apply the term if the bit in its row is high.
-      if ((currentCombination & bitmask) != 0) {
+      if ((combination & bitmask) != 0) {
         precursor ^= term;
       }
       bitmask <<= 1;
@@ -111,7 +106,7 @@ function getGoodTerms({ varCount, terms, mask = 0 }) {
     if (minimum != Infinity) {
       precursorTerms.push({
         precursor: precursor,
-        linearCombination: currentCombination,
+        linearCombination: combination,
         lampCount: minimum,
       });
     }
@@ -131,7 +126,7 @@ function getGoodTerms({ varCount, terms, mask = 0 }) {
  * @param {number} mask
  * @returns {number[][]} Partially sorted transition matrices
  */
-function combinations({ varCount, terms, mask = 0, hardLimit = 1000 }) {
+function combinations({ varCount, terms, mask = 0, hardLimit = 20 }) {
   const { linearCombinations, goodTermsMap } = getGoodTerms({
     varCount: varCount,
     terms: terms,
@@ -157,21 +152,26 @@ function combinations({ varCount, terms, mask = 0, hardLimit = 1000 }) {
         );
         const inverse = getInverseMatrix(lin_combinations);
 
-        BigRes.push([lampSum, inverse, transitioned]);
+        BigRes.push({
+          complexity: lampSum,
+          rows: inverse,
+          transitioned: transitioned,
+          mask: mask,
+        });
       }
       tested++;
       postMessage({
         action: "count",
         count: `${BigRes.length}/${tested}`,
       });
-      if (BigRes.length >= hardLimit) return BigRes;
+      if (BigRes.length >= hardLimit) return BigRes.sort((a,b) => a.complexity-b.complexity);
     } else {
       idx++;
       combination[idx] = combination[idx - 1];
     }
     combination[idx]++;
   }
-  return BigRes;
+  return BigRes.sort((a,b) => a.complexity-b.complexity);
 }
 
 /**
