@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Document</title>
+    <style>
+      table,
+      tr,
+      td {
+        border: 1px solid black;
+        border-collapse: collapse;
+        font-family: monospace;
+        font-size: 16px;
+      }
+      td {
+        width: 45px;
+        text-align: center;
+      }
+      .grid {
+        display: grid;
+        grid-template-columns: auto 1fr;
+        grid-gap: 10px;
+        margin: 10px;
+        padding: 10px;
+      }
+      span {
+        font-size: 1.5em;
+        font-weight: bold;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="content"></div>
+
+    <script type="module">
+      import { Dictionary } from "./js/data/dictionary.js";
+
+      /**
+       * tests if a number is a power of two
+       * @param {number} x
+       * @returns {boolean}
+       */
+      function isPowerOfTwo(x) {
+        return Math.log2(x) % 1 === 0;
+      }
+
+      /**
+       * Tests if the matrix is invertible by checking the rows are linearly independent in GF(2).
+       * @param {number[]} rows
+       * @returns {boolean}
+       */
+      function isInvertible(rows, pad = 2 ** rows.length) {
+        for (let i = 3; i < pad; i++) {
+          if (isPowerOfTwo(i)) continue; // skip a trivial combination
+          let term = 0;
+          let bitmask = 1;
+          for (let j = 0; j < rows.length; j++) {
+            if ((i & bitmask) != 0) term ^= rows[j];
+            bitmask <<= 1;
+          }
+          if (rows.includes(term)) return false;
+        }
+        return true;
+      }
+
+      /**
+       * Performs a GF(2) transition on a set of terms using a transition matrix.
+       * @param {number[]} rows: The rows of the transition matrix
+       * @param {number[]} terms: The terms to be transitioned
+       * @returns {number[]} Transitioned terms
+       */
+      function transition(rows, terms) {
+        let newTerms = Array(terms.length).fill(0);
+
+        for (let i = 0; i < terms.length; i++) {
+          let bitmask = 1;
+          for (let j = 0; j < terms.length; j++) {
+            if ((rows[i] & bitmask) != 0) {
+              newTerms[i] ^= terms[j];
+            }
+            bitmask <<= 1;
+          }
+        }
+        return newTerms;
+      }
+
+      /**
+       * @typedef {Map<number,number>} TermMap
+       * @description Transitioned term as key, lamp count as value, ordered by lamp count
+       */
+      /**
+       * @typedef {number[]} viableCombinations
+       * @description Array of solvable linear combinations, preserving order of TermMap
+       */
+      /**
+       * Generates all viable linear combinations (encodings) of input terms
+       * @param {number[]} terms
+       * @param {number} mask
+       * @returns {[viableCombinations,TermMap]} Viable linear combinations array, and pruned map of terms.
+       */
+      function getGoodTerms({ varCount, terms, mask = 0 }) {
+        const masked_dictionary = Dictionary[varCount - 2].map((a) => [
+          a[0] | mask,
+          a[1],
+        ]);
+        let precursorTerms = [];
+
+        // Test all linear combinations.
+        for (
+          let combination = 1;
+          combination < 2 ** terms.length;
+          combination++
+        ) {
+          let bitmask = 0b1;
+          let precursor = 0b0;
+
+          for (let term of terms) {
+            // Apply the term if the bit in its row is high.
+            if ((combination & bitmask) != 0) {
+              precursor ^= term;
+            }
+            bitmask <<= 1;
+          }
+
+          // Get the minimum lamp count of a gate that defines this term.
+          const minimum = Math.min(
+            ...masked_dictionary
+              .filter((a) => a[0] == (precursor | mask))
+              .map((a) => a[1])
+          );
+
+          // If the transitioned term is in the dictionary, add it to the viable combinations.
+          if (minimum != Infinity) {
+            precursorTerms.push({
+              precursor: precursor,
+              linearCombination: combination,
+              lampCount: minimum,
+            });
+          }
+        }
+        precursorTerms.sort((a, b) => a.lampCount - b.lampCount);
+        return {
+          linearCombinations: precursorTerms.map((a) => a.linearCombination),
+          goodTermsMap: new Map(
+            precursorTerms.map((a) => [a.precursor, a.lampCount])
+          ),
+        };
+      }
+
+      /**
+       * Generates all transition matrices for a given set of terms
+       * @param {number[]} terms
+       * @param {number} mask
+       * @returns {number[][]} Partially sorted transition matrices
+       */
+      function combinations({ varCount, terms, mask = 0, hardLimit = 1000 }) {
+        const { linearCombinations, goodTermsMap } = getGoodTerms({
+          varCount: varCount,
+          terms: terms,
+          mask: mask,
+        });
+        let combination = new Array(terms.length).fill(0);
+        const dim = goodTermsMap.size;
+        let idx = 0;
+        let BigRes = [];
+        let tested = 0;
+        while (idx >= 0) {
+          if (combination[idx] >= dim) {
+            idx--;
+          } else if (idx === terms.length - 1) {
+            const lin_combinations = combination.map(
+              (a) => linearCombinations[a]
+            );
+
+            // Check the matrix and add it to possible solutions list.
+            if (isInvertible(lin_combinations)) {
+              const transitioned = transition(lin_combinations, terms);
+              const lampSum = transitioned.reduce(
+                (acc, term) => acc + goodTermsMap.get(term),
+                0
+              );
+              const inverse = getInverseMatrix(lin_combinations);
+
+              // TODO: remove table structure
+              let text = `<table>`;
+              for (let i in inverse) {
+                text += `<tr><td>${(inverse[i] + 2 ** terms.length)
+                  .toString(2)
+                  .substring(1)
+                  .split("")
+                  .join("</td><td>")}</td>`;
+                text += `<td><table><tr><td>${
+                  transitioned[i]
+                }</td></tr><tr><td>${transitioned[i]
+                  .toString(2)
+                  .padStart(16, "0")}</td></tr></table></td></tr>`;
+              }
+              text += `</table>`;
+              BigRes.push([lampSum, text]);
+            }
+            tested++;
+            postMessage({
+              action: "count",
+              count: `${BigRes.length}/${tested}`,
+            });
+            if (BigRes.length >= hardLimit) return BigRes;
+          } else {
+            idx++;
+            combination[idx] = combination[idx - 1];
+          }
+          combination[idx]++;
+        }
+        return BigRes;
+      }
+
+      /**
+       * Finds the inverse matrix of a transition matrix.
+       * @param {number[]} lin_combinations Set of linear combinations
+       * @returns {number[]} Inverse transition matrix
+       */
+      function getInverseMatrix(lin_combinations) {
+        let found = 0;
+        let inverse = new Array(lin_combinations.length).fill(0);
+        // Try all transformations per row.
+        for (let i = 1; i < 2 ** lin_combinations.length; i++) {
+          let term = 0;
+          let bitmask = 1;
+
+          // Apply transition.
+          for (const combination of lin_combinations) {
+            if ((i & bitmask) != 0) term ^= combination;
+            bitmask <<= 1;
+          }
+
+          // If after transition the row has a single high bit, then that transition is part of the inverse matrix.
+          if (isPowerOfTwo(term)) {
+            inverse[Math.log2(term)] = i;
+            found++;
+            if (found == lin_combinations.length) break;
+          }
+        }
+        return inverse;
+      }
+
+      // // Hex seven segment driver
+      // const terms = [
+      //     0b1101111101110001,
+      //     0b0010011110011111,
+      //     0b0010111111111011,
+      //     0b1111110101000101,
+      //     0b1110111101111100,
+      //     0b0111101101101101,
+      //     0b1101011111101101,
+      // ];
+
+      // const terms = [
+      //     0b1111111011001000,
+      //     0b1100100100110110,
+      //     0b1010010110100101,
+      // ];
+      // const mask = 0b0;
+
+      // const terms = [
+      //     0b1111111100000000,
+      //     0b0000000011111111,
+      //     0b0000000000000001,
+      // ];
+      // // BCD to bin module
+      const terms = [
+        0b0001100000000000, 
+        0b0000011111110000, 
+        0b0000011011001100,
+        0b0001010110101010,
+      ];
+      const mask = 0b1110000000000000;
+
+      const varCount = 4;
+
+      const goodTerms = getGoodTerms({
+        varCount: varCount,
+        terms: terms,
+        mask: mask,
+      });
+      console.log(goodTerms);
+
+      const matrices = combinations({
+        varCount: varCount,
+        terms: terms,
+        mask: mask,
+      });
+
+      matrices.sort((a, b) => a[0] - b[0]);
+      let txt = "";
+      for (let res of matrices) {
+        txt += `<div class='grid'>${res[1]}<span>${res[0]}</span></div>`;
+      }
+      content.innerHTML += txt;
+    </script>
+  </body>
+</html>

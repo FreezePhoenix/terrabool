@@ -30,12 +30,14 @@ main, footer{
 }
 p{
     max-width: 70ch;
+    text-align: justify;
     padding-bottom: 10px;
 }
 #table_img{
     float: right;
     display: grid;
     gap: 10px;
+    padding-left: 10px;
 }
 #example_img{
     width: 200px;
@@ -43,6 +45,8 @@ p{
 table,tr,td,th{
     border-collapse: collapse;
     text-align: center;
+    font-family: monospace;
+    font-size: 16px;
     padding: 0 4px;
 }
 tr{
@@ -82,6 +86,60 @@ h3{
 }
 section{
     border: 10px solid transparent;
+    /* padding: 10px; */
+}
+#tabbar{
+    display: flex;
+}
+#tabbar label{
+    border-bottom: 10px solid transparent;
+    padding: 4px 8px;
+    cursor: pointer;
+}
+#tabbar label span{
+    font-size: clamp(0.8rem, 4vw + 1rem, 1.2rem);
+    font-family: andy, sans-serif;
+    color: #FFB000;
+    filter: url(assets/filter.svg#outlineM);
+    transition: color 0.2s;
+}
+#tabbar label:hover span{
+    color: #F3F302;
+}
+#btn_single:checked ~ label[for="btn_single"]{
+    border-right: 10px solid transparent;
+    border-image: url(assets/border_red.png) 16 round;
+}
+#btn_multi:checked ~ label[for="btn_multi"]{
+    border-left: 10px solid transparent;
+    border-right: 10px solid transparent;
+    border-image: url(assets/border_red.png) 16 round;
+}
+#tab_single, #tab_multi{
+    display: none;
+}
+#tab_single.active, #tab_multi.active{
+    display: grid;
+}
+
+#multi_new_field{
+    background-color: #ffffffb7;
+}
+#multi_new_field:focus{
+    background-color: #fff;
+}
+.flex_column{
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+.inline{
+    display: inline-block;
+}
+.flex_column.inline{
+    display: inline-flex;
+}
+.p10{
     padding: 10px;
 }
 #minifier{
@@ -99,7 +157,7 @@ mark.gate{
 mark.negation{
     background-color: #004cff77;
 }
-#loader{
+#loader, #loader_multi{
     border-radius: 50%;
     border: 5px solid #ffffff00;
     border-top: 5px solid #3498db;
@@ -107,14 +165,25 @@ mark.negation{
     height: 20px;
     animation: spin 1s linear infinite;
 }
-form{
+#multi_form{
     display: flex;
-    height: 25px;
     align-items: center;
 }
-form > :is(input, button){
+#hardlimit{
+    width: 80px;
+}
+form  :is(input, label, button), #multi_progress{
+    font-family: monospace;
+}
+button{
+    cursor: pointer;
+}
+form :is(input, button){
     margin-right: 10px;
     padding: 2px 5px;
+    border: 1px solid #3a3a3a;
+    border-radius: 3px;
+    background-color: #fff;
 }
 
 @keyframes spin {
@@ -136,4 +205,25 @@ form > :is(input, button){
     border-image: url(assets/border_blue.png) 16 round;
     padding: 10px;
     margin: 10px auto;
+}
+#result_multi_prev, #result_multi_next{
+    padding: 2px 5px;
+    margin-top: 10px;
+}
+
+#displayed_matrix td {
+    width: 20px;
+    text-align: center;
+}
+
+#displayed_matrix  .grid {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    grid-gap: 10px;
+    margin-top: 10px;
+}
+
+#displayed_matrix span {
+    font-size: 1.5em;
+    font-weight: bold;
 }
