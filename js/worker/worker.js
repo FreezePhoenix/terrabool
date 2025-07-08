@@ -9,7 +9,7 @@ import { Dictionary } from "../data/dictionary.js";
  * @param {number} count: the number of terms in the expression
  * @param {Array.<{number, number}>} solutions: array of [boolean function, min depth to solve]
  */
-const testfunc = (varCount, val, count, solutions) => {
+const testfunc = ({ varCount, val, count, solutions }) => {
   for (let gate of Gates) {
     let term = gate.combine(
       val.map((a) => a[1]),
@@ -34,7 +34,7 @@ const testfunc = (varCount, val, count, solutions) => {
  * @param {number} count: the number of terms in the expression
  * @param {string[]} solutions: the array of solutions
  */
-const identity = (varCount, val, count, solutions, term, mask) => {
+const identity = ({ varCount, term, mask, val, count, solutions }) => {
   if (count === 1) {
     if ((val[0][1] | mask) == term) {
       solutions.push([val[0][0], val[0][2]]);
@@ -120,7 +120,14 @@ function makeExpressionsBFS({
   while (!queue.empty()) {
     let { val, idx, count } = queue.dequeue();
 
-    callback(varCount, val, count, solutions, term, mask);
+    callback({
+      varCount: varCount,
+      term: term,
+      mask: mask,
+      val: val,
+      count: count,
+      solutions: solutions,
+    });
 
     if (count < maxDepth) {
       let available = true;
