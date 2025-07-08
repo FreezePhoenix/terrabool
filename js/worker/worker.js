@@ -40,38 +40,31 @@ const identity = ({ varCount, term, mask, val, count, solutions }) => {
     for (let gate of Gates) {
       const t = gate.combine(val, varCount);
       if ((t | mask) == term) {
-        let symbol_string = "";
-        let current = val;
+        let symbol_string = val.symbol;
+        let current = val.prev;
         let wire_lamps = new Array(val.depth);
         let index = val.depth;
         do {
-          symbol_string += current.symbol;
+          symbol_string = current.symbol + ", " + symbol_string;
           wire_lamps[--index] = current.wire_lamp;
           current = current.prev;
-          if(current == null) {
-            break;
-          }
-          symbol_string += ", ";
-        } while(true);
+        } while(current != null);
+        
         // valid expression found. add it to solutions
         solutions.push([
           `${gate.symbol}(${symbol_string})`,
           wire_lamps,
         ]);
       } else if ((negate(t, varCount) | mask) == term) {
-        let symbol_string = "";
-        let current = val;
+        let symbol_string = val.symbol;
+        let current = val.prev;
         let wire_lamps = new Array(val.depth);
         let index = val.depth;
         do {
-          symbol_string += current.symbol;
+          symbol_string = current.symbol + ", " + symbol_string;
           wire_lamps[--index] = current.wire_lamp;
           current = current.prev;
-          if(current == null) {
-            break;
-          }
-          symbol_string += ", ";
-        } while(true);
+        } while(current != null);
         
         solutions.push([
           `¬${gate.symbol}(${symbol_string})`,
