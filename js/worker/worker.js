@@ -11,10 +11,7 @@ import { Dictionary } from "../data/dictionary.js";
  */
 const testfunc = ({ varCount, val, count, solutions }) => {
   for (let gate of Gates) {
-    let term = gate.combine(
-      val.map((a) => a[1]),
-      varCount
-    );
+    let term = gate.combine(val, varCount);
     solutions[term] = solutions[term]
       ? [term, Math.min(solutions[term][1], count)]
       : [term, count];
@@ -36,25 +33,49 @@ const testfunc = ({ varCount, val, count, solutions }) => {
  */
 const identity = ({ varCount, term, mask, val, count, solutions }) => {
   if (count === 1) {
-    if ((val[0][1] | mask) == term) {
-      solutions.push([val[0][0], val[0][2]]);
+    if ((val.mask | mask) == term) {
+      solutions.push([val.symbol, val.wire_lamp]);
     }
   } else {
     for (let gate of Gates) {
-      const t = gate.combine(
-        val.map((a) => a[1]),
-        varCount
-      );
+      const t = gate.combine(val, varCount);
       if ((t | mask) == term) {
+        let symbol_string = "";
+        let current = val;
+        let wire_lamps = new Array(val.depth);
+        let index = val.depth;
+        do {
+          symbol_string += current.symbol;
+          current = current.prev;
+          wire_lamps[--index] = current.wire_lamp;
+          if(current == null) {
+            break;
+          }
+          symbol_string += ", ";
+        } while(true);
         // valid expression found. add it to solutions
         solutions.push([
-          `${gate.symbol}(${val.map((a) => a[0]).join(", ")})`,
-          val.map((a) => a[2]),
+          `${gate.symbol}(${symbol_string})`,
+          wire_lamps,
         ]);
       } else if ((negate(t, varCount) | mask) == term) {
+        let symbol_string = "";
+        let current = val;
+        let wire_lamps = new Array(val.depth);
+        let index = val.depth;
+        do {
+          symbol_string += current.symbol;
+          current = current.prev;
+          wire_lamps[--index] = current.wire_lamp;
+          if(current == null) {
+            break;
+          }
+          symbol_string += ", ";
+        } while(true);
+        
         solutions.push([
-          `¬${gate.symbol}(${val.map((a) => a[0]).join(", ")})`,
-          val.map((a) => a[2]),
+          `¬${gate.symbol}(${symbol_string})`,
+          wire_lamps,
         ]);
       }
     }
@@ -109,7 +130,13 @@ function makeExpressionsBFS({
   for(let i = 0; i < legalTerms.length; i++) {
     let v = legalTerms[i];
     queue.enqueue({
-      val: [v],
+      val: {
+        symbol: v[0],
+        mask: v[1],
+        wire_lamp: v[2],
+        depth: 1,
+        prev: null
+      },
       idx: i,
       count: 1,
       next: null
@@ -132,8 +159,15 @@ function makeExpressionsBFS({
     if (count < maxDepth) {
       let available = true;
       for (let i = idx + 1; i < legalTerms.length; i++) {
-        let newStr = [...val, legalTerms[i]];
-        queue.enqueue({ val: newStr, idx: i, count: count + 1, next: null });
+        let term = legalTerms[i];
+        let newVal = {
+          symbol: term[0],
+          mask: term[1],
+          wire_lamp: term[2],
+          depth: val.depth + 1,
+          prev: val
+        }
+        queue.enqueue({ val: newVal, idx: i, count: count + 1, next: null });
       }
     }
   }
