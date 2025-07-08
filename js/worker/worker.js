@@ -61,6 +61,32 @@ const identity = (varCount, val, count, solutions, term, mask) => {
   }
 };
 
+
+class Queue {
+    head = null;
+    tail = null;
+    constructor() {}
+    enqueue(data) {
+        if(this.head == null) {
+            this.head = this.tail = data;
+        } else {
+            this.tail.next = data;
+            this.tail = data;
+        }
+    }
+    dequeue() {
+      if(this.head == null) {
+          return null;
+      }
+      let temp = this.head;
+      this.head = temp.next;
+      return temp;
+    }
+    empty() {
+      return this.head == null;
+    }
+}
+
 /**
  * Generates all possible expressions for a given term, combinations generated in breadth-first-like order.
  * @param {number} varCount: number of variables (2 to 4)
@@ -79,12 +105,20 @@ function makeExpressionsBFS({
 }) {
   const legalTerms = Terms[varCount];
   // Initialize the queue with the individual terms.
-  let queue = [...legalTerms].map((v, i) => ({ val: [v], idx: i, count: 1 }));
+  let queue = new Queue();
+  for(let i = 0; i < legalTerms.length; i++) {
+    let v = legalTerms[i];
+    queue.enqueue({
+      val: [v],
+      idx: i,
+      count: 1,
+      next: null
+    });
+  }
   let solutions = [];
 
-  while (queue.length > 0) {
-    let qelem = queue.pop();
-    let { val, idx, count } = qelem;
+  while (!queue.empty()) {
+    let { val, idx, count } = queue.dequeue();
 
     callback(varCount, val, count, solutions, term, mask);
 
@@ -92,16 +126,7 @@ function makeExpressionsBFS({
       let available = true;
       for (let i = idx + 1; i < legalTerms.length; i++) {
         let newStr = [...val, legalTerms[i]];
-        if(available) {
-          qelem.val = newStr;
-          qelem.idx = i;
-          qelem.count = count + 1;
-          available = false;
-          queue.push(qelem);
-        } else {
-          // Add the new substring to the end of the queue.
-          queue.push({ val: newStr, idx: i, count: count + 1 });
-        }
+        queue.enqueue({ val: newStr, idx: i, count: count + 1, next: null });
       }
     }
   }
