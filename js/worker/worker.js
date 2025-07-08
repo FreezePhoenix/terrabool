@@ -31,7 +31,7 @@ const testfunc = ({ varCount, val, count, solutions }) => {
  * @param {number} count: the number of terms in the expression
  * @param {string[]} solutions: the array of solutions
  */
-const identity = ({ varCount, term, mask, val, count, solutions }) => {
+const identity = ({ varCount, term, neg_term, mask, val, count, solutions }) => {
   if (count === 1) {
     if ((val.mask | mask) == term) {
       solutions.push([val.symbol, val.wire_lamp]);
@@ -55,7 +55,7 @@ const identity = ({ varCount, term, mask, val, count, solutions }) => {
           `${gate.symbol}(${symbol_string})`,
           wire_lamps,
         ]);
-      } else if ((negate(t, varCount) | mask) == term) {
+      } else if (t | mask == neg_term) {
         let symbol_string = val.symbol;
         let current = val.prev;
         let wire_lamps = new Array(val.depth);
@@ -117,6 +117,7 @@ function makeExpressionsBFS({
   mask,
   callback = identity,
 }) {
+  const neg_term = negate(term ^ mask, varCount) | mask; 
   const legalTerms = Terms[varCount];
   // Initialize the queue with the individual terms.
   let queue = new Queue();
@@ -142,6 +143,7 @@ function makeExpressionsBFS({
 
     callback({
       varCount: varCount,
+      neg_term: neg_term,
       term: term,
       mask: mask,
       val: val,
