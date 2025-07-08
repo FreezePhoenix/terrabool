@@ -46,8 +46,8 @@ const identity = ({ varCount, term, mask, val, count, solutions }) => {
         let index = val.depth;
         do {
           symbol_string += current.symbol;
-          current = current.prev;
           wire_lamps[--index] = current.wire_lamp;
+          current = current.prev;
           if(current == null) {
             break;
           }
@@ -65,8 +65,8 @@ const identity = ({ varCount, term, mask, val, count, solutions }) => {
         let index = val.depth;
         do {
           symbol_string += current.symbol;
-          current = current.prev;
           wire_lamps[--index] = current.wire_lamp;
+          current = current.prev;
           if(current == null) {
             break;
           }
