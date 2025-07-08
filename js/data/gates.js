@@ -4,19 +4,17 @@ export function negate(term,var_count){
 }
 
 // Terraria gate logic. 
-function Xor(numbers){
-    let result = 0;
-    for (let i = 0; i < 32; i++) {
-        let bitCount = 0;
-
-        for (const number of numbers) {
-        bitCount += (number >> i) & 1;
-        }
-        if (bitCount == 1)
-            result |= 1 << i;
+function Xor(numbers) {
+    let encountered = 0;
+    let over = 0;
+    for(let i = 0; i < numbers.length; i++) {
+        let number = numbers[i];
+        over |= number & encountered;
+        encountered |= number;
     }
-    return result;
+    return ~over & encountered;
 }
+
 
 export const Gates = [
     // {   
