@@ -55,7 +55,7 @@ const identity = ({ varCount, term, neg_term, mask, val, count, solutions }) => 
           `${gate.symbol}(${symbol_string})`,
           wire_lamps,
         ]);
-      } else if (t | mask == neg_term) {
+      } else if ((t | mask) == neg_term) {
         let symbol_string = val.symbol;
         let current = val.prev;
         let wire_lamps = new Array(val.depth);
