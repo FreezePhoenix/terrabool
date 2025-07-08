@@ -83,7 +83,7 @@ function makeExpressionsBFS({
   let solutions = [];
 
   while (queue.length > 0) {
-    let qelem = queue.shift();
+    let qelem = queue.pop();
     let { val, idx, count } = qelem;
 
     callback(varCount, val, count, solutions, term, mask);
