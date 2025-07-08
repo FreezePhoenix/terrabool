@@ -13,10 +13,10 @@ export const Gates = [
         combine: (numbers) => {
             let encountered = 0;
             let over = 0;
-            for(let i = 0; i < numbers.length; i++) {
-                let number = numbers[i];
-                over |= number & encountered;
-                encountered |= number;
+            while(numbers) {
+                over |= numbers.mask & encountered;
+                encountered |= numbers.mask;
+                numbers = numbers.prev;
             }
             return ~over & encountered;
         }
@@ -25,8 +25,9 @@ export const Gates = [
         symbol:"∧",
         combine: (numbers) => {
             let result = ~0;
-            for(let i = 0; i < numbers.length; i++) {
-                result &= numbers[i];
+            while(numbers) {
+                result &= numbers.mask;
+                numbers = numbers.prev;
             }
             return result;
         }
