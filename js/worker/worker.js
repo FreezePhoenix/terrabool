@@ -83,15 +83,25 @@ function makeExpressionsBFS({
   let solutions = [];
 
   while (queue.length > 0) {
-    let { val, idx, count } = queue.shift();
+    let qelem = queue.shift();
+    let { val, idx, count } = qelem;
 
     callback(varCount, val, count, solutions, term, mask);
 
     if (count < maxDepth) {
+      let available = true;
       for (let i = idx + 1; i < legalTerms.length; i++) {
         let newStr = [...val, legalTerms[i]];
-        // Add the new substring to the end of the queue.
-        queue.push({ val: newStr, idx: i, count: count + 1 });
+        if(available) {
+          qelem.val = newStr;
+          qelem.idx = i;
+          qelem.count = count + 1;
+          available = false;
+          queue.push(qelem);
+        } else {
+          // Add the new substring to the end of the queue.
+          queue.push({ val: newStr, idx: i, count: count + 1 });
+        }
       }
     }
   }
