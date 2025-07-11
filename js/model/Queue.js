@@ -5,7 +5,7 @@
  * Setting the field to null helps performance slightly, but is not truly necessary.
  * The queue's goal is to minimize memory usage while maintaining efficiency.
  */
-class Queue {
+export class Queue {
     head = null;
     tail = null;
     constructor() {}
