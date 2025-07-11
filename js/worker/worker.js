@@ -151,14 +151,16 @@ onmessage = (e) => {
         // find the two terms of the shortest combined complexity that, when XOR'ed together, give the searched term
         let pair = [],
           min = Infinity;
-        for (let j of maskedDictionary) {
-          const found = maskedDictionary.filter(
-            (a) => a[0] == ((e.data.term ^ j[0]) | e.data.mask)
-          );
-          for (let f of found) {
-            if (f[1] + j[1] < min) {
-              pair = [f[0], j[0]];
-              min = f[1] + j[1];
+        for (let i = 0; i < maskedDictionary.length; i++) {
+          let term0 = maskedDictionary[i];
+          let complementary = (e.data.term ^ term0[0]) | e.data.mask;
+          for(let j = i + 1; j < maskedDictionary.length; j++) {
+            let term1 = maskedDictionary[j];
+            if(term1[0] == complementary) {
+              if (term1[1] + term0[1] < min) {
+                pair = [term1[0], term0[0]];
+                min = term1[1] + term0[1];
+              }
             }
           }
         }
