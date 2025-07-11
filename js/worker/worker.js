@@ -1,6 +1,7 @@
 import { Terms } from "../data/terms.js";
 import { Gates, negate } from "../data/gates.js";
 import { Dictionary } from "../data/dictionary.js";
+import { Queue } from "../model/Queue.js";
 
 /**
  * Creates the lookup table from dictionary.js
@@ -61,32 +62,6 @@ const identity = ({ varCount, term, neg_term, mask, val, count, solutions }) => 
     }
   }
 };
-
-
-class Queue {
-    head = null;
-    tail = null;
-    constructor() {}
-    enqueue(data) {
-        if(this.head == null) {
-            this.head = this.tail = data;
-        } else {
-            this.tail.next = data;
-            this.tail = data;
-        }
-    }
-    dequeue() {
-      if(this.head == null) {
-          return null;
-      }
-      let temp = this.head;
-      this.head = temp.next;
-      return temp;
-    }
-    empty() {
-      return this.head == null;
-    }
-}
 
 /**
  * Generates all possible expressions for a given term, combinations generated in breadth-first-like order.
