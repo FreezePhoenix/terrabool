@@ -114,7 +114,6 @@ function makeExpressionsBFS({
     });
 
     if (count < maxDepth) {
-      let available = true;
       for (let i = idx + 1; i < legalTerms.length; i++) {
         let term = legalTerms[i];
         let newVal = {
