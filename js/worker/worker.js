@@ -148,19 +148,29 @@ onmessage = (e) => {
         });
         postMessage({ action: "result", results: results });
       } else {
+        // Preprocessing...
+        let maskedDictionaryMap = new Map();
+        for(let i = 0; i < maskedDictionary.length; i++) {
+          let [term, complexity] = maskedDictionary[i];
+          if(maskedDictionaryMap.has(term)) {
+            if(complexity < maskedDictionaryMap.get(term)) {
+              maskedDictionaryMap.set(term, complexity);
+            }
+          } else {
+            maskedDictionaryMap.set(term, complexity);
+          }
+        }
         // find the two terms of the shortest combined complexity that, when XOR'ed together, give the searched term
         let pair = [],
           min = Infinity;
         for (let i = 0; i < maskedDictionary.length; i++) {
           let term0 = maskedDictionary[i];
           let complementary = (e.data.term ^ term0[0]) | e.data.mask;
-          for(let j = i + 1; j < maskedDictionary.length; j++) {
-            let term1 = maskedDictionary[j];
-            if(term1[0] == complementary) {
-              if (term1[1] + term0[1] < min) {
-                pair = [term1[0], term0[0]];
-                min = term1[1] + term0[1];
-              }
+          if(maskedDictionaryMap.has(complementary)) {
+            let term1Complexity = maskedDictionaryMap.get(complementary);
+            if (term1Complexity + term0[1] < min) {
+              pair = [complementary, term0[0]];
+              min = term1Complexity + term0[1];
             }
           }
         }
