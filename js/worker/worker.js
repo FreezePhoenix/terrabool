@@ -5,14 +5,15 @@ import { Queue } from "../model/Queue.js";
 
 /**
  * Creates the lookup table from dictionary.js
+ * @param {Array.<string, number, number> terms: The dictionary of terms.
  * @param {number} varCount: number of variables (2 to 4)
- * @param {Array.<{string, number}>} val: combinations of [Printable expression, Truth table value]
+ * @param {Object} val: An object describing the current term being investigated.
  * @param {number} count: the number of terms in the expression
  * @param {Array.<{number, number}>} solutions: array of [boolean function, min depth to solve]
  */
-const testfunc = ({ varCount, val, count, solutions }) => {
+const testfunc = (terms, varCount, val, count, solutions) => {
   for (let gate of Gates) {
-    let term = gate.combine(val, varCount);
+    let term = gate.combine(terms, val, varCount);
     solutions[term] = solutions[term]
       ? [term, Math.min(solutions[term][1], count)]
       : [term, count];
@@ -25,31 +26,37 @@ const testfunc = ({ varCount, val, count, solutions }) => {
 
 /**
  * Default validation function. Pushes valid text based expressions to the solutions array.
- * @param {number} varCount: number of variables (2 to 4)
- * @param {number} term: the term to be expressed
- * @param {number} mask: a mask taking care of don't cares
- * @param {Array.<string, number>} val: combinations of [Printable expression, Truth table value]
+ * @param {Array.<string, number, number>} terms: The dictionary of terms.
+ * @param {Object} val: An object describing the current term being investigated.
  * @param {number} count: the number of terms in the expression
- * @param {string[]} solutions: the array of solutions
+ * @param {Array.<{string, number[]}>} solutions: array of [representative string, list of wire lamp configurations]
+ * @param {number} term: The desired term to reach
+ * @param {number} neg_term: The complement of the desired term to reach, in case we can reach it using a negated output
+ * @param {number} mask: a mask taking care of don't cares
  */
-const identity = ({ varCount, term, neg_term, mask, val, count, solutions }) => {
+const identity = (terms, val, count, solutions, term, neg_term, mask) => {
+  let vterm = terms[val.idx];
   if (count === 1) {
-    if ((val.mask | mask) == term) {
-      solutions.push([val.symbol, val.wire_lamp]);
+    for (let gate of Gates) {
+      gate.combine(terms, val);
+    }
+    if ((vterm[1] | mask) == term) {
+      solutions.push([vterm[0], vterm[2]]);
     }
   } else {
     for (let gate of Gates) {
-      const t = gate.combine(val, varCount);
+      const t = gate.combine(terms, val);
       const t_m = t | mask;
       if (t_m == term || t_m == neg_term) {
-        let symbol_string = val.symbol;
+        let symbol_string = vterm[0];
         let current = val.prev;
-        let wire_lamps = new Array(val.depth);
-        let index = val.depth;
+        let wire_lamps = new Array(count);
+        let index = count;
         
         do {
-          symbol_string = current.symbol + ", " + symbol_string;
-          wire_lamps[--index] = current.wire_lamp;
+          let cterm = terms[current.idx];
+          symbol_string = cterm[0] + ", " + symbol_string;
+          wire_lamps[--index] = cterm[2];
           current = current.prev;
         } while(current != null);
         
@@ -62,6 +69,7 @@ const identity = ({ varCount, term, neg_term, mask, val, count, solutions }) => 
     }
   }
 };
+
 
 /**
  * Generates all possible expressions for a given term, combinations generated in breadth-first-like order.
@@ -81,49 +89,46 @@ function makeExpressionsBFS({
 }) {
   const neg_term = negate(term ^ mask, varCount) | mask; 
   const legalTerms = Terms[varCount];
+  
   // Initialize the queue with the individual terms.
   let queue = new Queue();
+  let next_queue = new Queue();
+  
   for(let i = 0; i < legalTerms.length; i++) {
-    let v = legalTerms[i];
-    queue.enqueue({
-      val: {
-        symbol: v[0],
-        mask: v[1],
-        wire_lamp: v[2],
-        depth: 1,
-        prev: null
-      },
+    next_queue.enqueue({
+      XOR_CACHE_O: 0,
+      XOR_CACHE_E: 0,
+      AND_CACHE: 0,
+      prev: null,
+      next: null,
       idx: i,
-      count: 1,
-      next: null
     });
   }
+  
   let solutions = [];
-
-  while (!queue.empty()) {
-    let { val, idx, count } = queue.dequeue();
-
-    callback({
-      varCount: varCount,
-      neg_term: neg_term,
-      term: term,
-      mask: mask,
-      val: val,
-      count: count,
-      solutions: solutions,
-    });
-
-    if (count < maxDepth) {
-      for (let i = idx + 1; i < legalTerms.length; i++) {
-        let term = legalTerms[i];
-        let newVal = {
-          symbol: term[0],
-          mask: term[1],
-          wire_lamp: term[2],
-          depth: val.depth + 1,
-          prev: val
+  let count = 0;
+  
+  while(!next_queue.empty()) {
+    let temp = next_queue;
+    next_queue = queue;
+    queue = temp;
+    
+    count++;
+    
+    while (!queue.empty()) {
+      let val = queue.dequeue();
+      callback(legalTerms, val, count, solutions, term, neg_term, mask);
+      if (count < maxDepth) {
+        for (let i = val.idx + 1; i < legalTerms.length; i++) {
+          next_queue.enqueue({ 
+            XOR_CACHE_O: 0,
+            XOR_CACHE_E: 0,
+            AND_CACHE: 0,
+            prev: val,
+            next: null,
+            idx: i,
+          });
         }
-        queue.enqueue({ val: newVal, idx: i, count: count + 1, next: null });
       }
     }
   }
