@@ -205,18 +205,17 @@ export default class UIStateHandler {
     }
   }
 
-  static displayMatrix({ complexity, rows, transitioned, mask }) {
+  static displayMatrix({ complexity, rows, transitioned, mask }, varCount, outputs) {
     let text = `<table>`;
-    for (let i in rows) {
-      let num = transitioned[i].toString(2).padStart(16, "0");
+    for (let i = 0; i < rows.length; i++) {
+      let num = transitioned[i].toString(2).padStart(2 ** varCount, "0");
       let txtMask = mask.toString(2).padStart(16, "0");
       num = num.split('').map((a, idx) => (txtMask[idx] == "1" ? "x" : a)).join('');
-      text += `<tr><td>${(rows[i] + 2 ** transitioned.length)
-        .toString(2)
-        .substring(1)
-        .split("")
-        .join("</td><td>")}</td>`;
-      text += `<td>${num}</td></tr>`;
+      text += `<tr><td>${num}</td>`;
+      for(let j = 0; j < outputs; j++) {
+        text += `<td>${((rows[i] >> j) & 1).toString(2)}</td>`;
+      }
+      text += `</tr>`;
     }
     text += `</table>`;
 
