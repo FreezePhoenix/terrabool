@@ -154,9 +154,10 @@ worker.onmessage = (e) => {
 };
 
 let index = 0;
-let matrices = JSON.parse(localStorage.getItem("matrices"));
+let matrixResults = JSON.parse(localStorage.getItem("matrices"));
+let matrices = matrixResults?.matrices;
 UI.setNextPrevState(index, matrices);
-if (matrices != null) UI.displayMatrix(matrices[index]);
+if (matrixResults != null) UI.displayMatrix(matrices[index], matrixResults.varCount, matrixResults.outputs);
 
 // Multi input worker. Generates transition matrices.
 transmatrix.onmessage = (e) => transmatrix_onmessage(e);
@@ -167,10 +168,11 @@ function transmatrix_onmessage(e) {
 
       if (e.data.results) {
         localStorage.setItem("matrices", JSON.stringify(e.data.results));
-        matrices = e.data.results;
+        matrixResults = e.data.results;
+        matrices = matrixResults.matrices;
         index = 0;
         UI.setNextPrevState(index, matrices);
-        UI.displayMatrix(matrices[index]);
+        UI.displayMatrix(matrices[index], matrixResults.varCount, matrixResults.outputs);
       }
       break;
     case "count":
@@ -183,13 +185,13 @@ function next() {
   if (matrices != null && index < matrices.length - 1)
     index++;
   UI.setNextPrevState(index, matrices);
-  UI.displayMatrix(matrices[index]);
+  UI.displayMatrix(matrices[index], matrixResults.varCount, matrixResults.outputs);
 }
 
 function prev() {
   if (index > 0) index--;
   UI.setNextPrevState(index, matrices);
-  UI.displayMatrix(matrices[index]);
+  UI.displayMatrix(matrices[index], matrixResults.varCount, matrixResults.outputs);
 }
 
 function display() {
