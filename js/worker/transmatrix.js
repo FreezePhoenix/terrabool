@@ -62,6 +62,22 @@ function transition(rows, terms) {
 }
 
 /**
+ * We are tasked with transposing an array of numbers as if the bits formed a matrix.
+ * We assume they are square, but that's fine for the uses we have.
+ */
+function transpose(arrayOfNums) {
+  let result = [];
+  for(let i = 0; i < arrayOfNums.length; i++) {
+    let beginning = (arrayOfNums[0] >> i) & 1;
+    for(let j = 1; j < arrayOfNums.length; j++) {
+      beginning |= ((arrayOfNums[j] >> i) & 1) << j;
+    }
+    result[i] = beginning;
+  }
+  return result;
+}
+
+/**
  * @typedef {Map<number,number>} TermMap
  * @description Transitioned term as key, lamp count as value, ordered by lamp count
  */
@@ -146,16 +162,32 @@ function combinations({ varCount, terms, mask = 0, hardLimit = 20 }) {
       // Check the matrix and add it to possible solutions list.
       if (isInvertible(lin_combinations)) {
         const transitioned = transition(lin_combinations, terms);
-        const lampSum = transitioned.reduce(
+        const inverse = getInverseMatrix(lin_combinations);
+        let rows = transpose(inverse);
+        let new_transitioned = [];
+        let transitionedMap = new Map();
+        for(let i = 0; i < transitioned.length; i++) {
+          let itransition = transitioned[i];
+          if(transitionedMap.has(itransition)) {
+            // We XOR instead of OR here, even though they *should* be identical, but just in case the system decides to use the same term twice for some reason.
+            transitionedMap.set(itransition, transitionedMap.get(itransition) ^ rows[i]);
+          } else {
+            transitionedMap.set(itransition, rows[i]);
+            new_transitioned.push(itransition);
+          }
+        }
+        let new_rows = [];
+        for(let i = 0; i < new_transitioned.length; i++) {
+          new_rows.push(transitionedMap.get(new_transitioned[i]));
+        }
+        const lampSum = new_transitioned.reduce(
           (acc, term) => acc + goodTermsMap.get(term),
           0
         );
-        const inverse = getInverseMatrix(lin_combinations);
-
         BigRes.push({
           complexity: lampSum,
-          rows: inverse,
-          transitioned: transitioned,
+          rows: new_rows,
+          transitioned: new_transitioned,
           mask: mask,
         });
       }
@@ -212,10 +244,14 @@ onmessage = (e) => {
         mask: e.data.mask,
         hardLimit: e.data.hardLimit,
       });
-      matrices.sort((a, b) => a[0] - b[0]);
+      matrices.sort((a, b) => a.complexity - b.complexity);
       postMessage({
         action: "matrices",
-        results: matrices,
+        results: {
+          varCount: e.data.varCount, 
+          matrices,
+          outputs: e.data.terms.length
+        },
       });
       break;
     default:
