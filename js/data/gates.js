@@ -10,28 +10,23 @@ export const Gates = [
     // },
     {   
         symbol:"⊕", 
-        combine: (terms, numbers) => {
-            let mask = terms[numbers.idx][1];
+        combine: (numbers, mask) => {
             if(numbers.prev) {
-                let over = numbers.prev.XOR_CACHE_O | (mask & numbers.prev.XOR_CACHE_E);
-                let encountered = mask | numbers.prev.XOR_CACHE_E;
-                numbers.XOR_CACHE_O = over;
-                numbers.XOR_CACHE_E = encountered;
+                let over = numbers.prev.CACHE_1 | (mask & numbers.prev.CACHE_0);
+                let encountered = mask | numbers.prev.CACHE_0;
+                numbers.CACHE_1 = over;
+                numbers.CACHE_0 = encountered;
                 return ~over & encountered;
             }
-            numbers.XOR_CACHE_O = 0;
-            numbers.XOR_CACHE_E = mask;
+            numbers.CACHE_1 = 0;
+            numbers.CACHE_0 = mask;
             return mask;
         }
     },
     {   
-        symbol:"∧",
-        combine: (terms, numbers) => {
-            let mask = terms[numbers.idx][1];
-            if(numbers.prev) {
-                return numbers.AND_CACHE = numbers.prev.AND_CACHE & mask;
-            }
-            return numbers.AND_CACHE = mask;
+        symbol:"∨",
+        combine: (numbers, mask) => {
+            return numbers.CACHE_0;
         }
     },
     // {   
