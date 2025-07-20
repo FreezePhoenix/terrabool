@@ -1,3 +1,4 @@
+import Module from "./worker_wasm.mjs"
 import { Terms } from "../data/terms.js";
 import { Gates, negate } from "../data/gates.js";
 import { Dictionary } from "../data/dictionary.js";
@@ -145,16 +146,26 @@ function makeExpressionsBFS({
   return solutions.length > 0 ? solutions : undefined;
 }
 
-onmessage = (e) => {
+let module = Module({});
+async function wasmWorkerWrapper(varCount, maxDepth, term, mask) {
+  let results = (await module).makeExpressionsBFS(varCount, maxDepth, term, mask);
+  if (results.size() == 0) {
+    return undefined;
+  }
+  let real_results = [];
+  for (let i = 0, size = results.size(); i < size; i++) {
+    real_results.push(results.get(i));
+  }
+  return real_results;
+}
+
+onmessage = async (e) => {
   switch (e.data.action) {
     case "search":
 
-      let results = makeExpressionsBFS({
-        varCount: e.data.varCount,
-        maxDepth: e.data.maxDepth,
-        term: e.data.term,
-        mask: e.data.mask,
-      });
+      let results = await wasmWorkerWrapper(
+        e.data.varCount, e.data.maxDepth, e.data.term, e.data.mask
+      );
       
       if(results != undefined) {
         postMessage({ action: "result", results });
