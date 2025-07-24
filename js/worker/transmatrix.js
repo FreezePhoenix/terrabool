@@ -11,6 +11,7 @@ SOLUTION: prune linear combination set (what the getGoodTerms function does) at 
 */
 
 import { Dictionary } from "../data/dictionary.js";
+import Module from "./transmatrix_wasm.mjs"
 
 /**
  * tests if a number is a power of two
@@ -235,16 +236,44 @@ function getInverseMatrix(lin_combinations) {
   return inverse;
 }
 
-onmessage = (e) => {
+let module = Module({});
+async function wasmWorkerWrapper(varCount, terms, mask, hardLimit) {
+  let rawTerms = [];
+  for (let i = 0; i < terms.length; i++) {
+    rawTerms[i] = terms[i];
+  }
+  for (let i = terms.length; i < 16; i++) {
+    rawTerms[i] = 0;
+  }
+  let results = (await module).combinations(varCount, rawTerms, terms.length, mask, hardLimit);
+  let realResults = [];
+  for (let i = 0; i < results.size(); i++) {
+    let temp = results.get(i);
+    let newRows = [];
+    let newTransitioned = [];
+    for (let j = 0; j < temp.rows.size(); j++) {
+      newRows.push(temp.rows.get(j));
+    }
+    for (let j = 0; j < temp.transitioned.size(); j++) {
+      newTransitioned.push(temp.transitioned.get(j));
+    }
+    let result = {
+      complexity: temp.complexity,
+      rows: newRows,
+      transitioned: newTransitioned,
+      mask: temp.mask
+    }
+    realResults.push(result);
+  }
+  console.log(realResults);
+  return realResults;
+}
+
+
+onmessage = async (e) => {
   switch (e.data.action) {
     case "generate":
-      const matrices = combinations({
-        varCount: e.data.varCount,
-        terms: e.data.terms,
-        mask: e.data.mask,
-        hardLimit: e.data.hardLimit,
-      });
-      matrices.sort((a, b) => a.complexity - b.complexity);
+      const matrices = await wasmWorkerWrapper(e.data.varCount, e.data.terms, e.data.mask, e.data.hardLimit);
       postMessage({
         action: "matrices",
         results: {
