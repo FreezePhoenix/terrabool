@@ -1,4 +1,5 @@
-export function negate(term, var_count) {
+// Special negation function, since js stores 32 bit integers, but we need 4/8/16 bits.
+export function negate(term,var_count){
     return ~term & ((1 << (2 ** var_count)) - 1);
 }
 
@@ -9,23 +10,28 @@ export const Gates = [
     // },
     {   
         symbol:"⊕", 
-        combine: (numbers, mask) => {
+        combine: (terms, numbers) => {
+            let mask = terms[numbers.idx][1];
             if(numbers.prev) {
-                let over = numbers.prev.CACHE_1 | (mask & numbers.prev.CACHE_0);
-                let encountered = mask | numbers.prev.CACHE_0;
-                numbers.CACHE_1 = over;
-                numbers.CACHE_0 = encountered;
+                let over = numbers.prev.XOR_CACHE_O | (mask & numbers.prev.XOR_CACHE_E);
+                let encountered = mask | numbers.prev.XOR_CACHE_E;
+                numbers.XOR_CACHE_O = over;
+                numbers.XOR_CACHE_E = encountered;
                 return ~over & encountered;
             }
-            numbers.CACHE_1 = 0;
-            numbers.CACHE_0 = mask;
+            numbers.XOR_CACHE_O = 0;
+            numbers.XOR_CACHE_E = mask;
             return mask;
         }
     },
     {   
-        symbol:"∨",
-        combine: (numbers, mask) => {
-            return numbers.CACHE_0;
+        symbol:"∧",
+        combine: (terms, numbers) => {
+            let mask = terms[numbers.idx][1];
+            if(numbers.prev) {
+                return numbers.AND_CACHE = numbers.prev.AND_CACHE & mask;
+            }
+            return numbers.AND_CACHE = mask;
         }
     },
     // {   

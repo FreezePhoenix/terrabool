@@ -1,4 +1,3 @@
-import Module from "./worker_wasm.mjs"
 import { Terms } from "../data/terms.js";
 import { Gates, negate } from "../data/gates.js";
 import { Dictionary } from "../data/dictionary.js";
@@ -35,31 +34,29 @@ const testfunc = (terms, varCount, val, count, solutions) => {
  * @param {number} neg_term: The complement of the desired term to reach, in case we can reach it using a negated output
  * @param {number} mask: a mask taking care of don't cares
  */
-const identity = (terms, val, count, solutions, term, neg_term, mask, symbols) => {
+const identity = (terms, val, count, solutions, term, neg_term, mask) => {
   let vterm = terms[val.idx];
   if (count === 1) {
-    for(let i = 0; i < Gates.length; i++) {
-      let gate = Gates[i];
-      gate.combine(val, vterm);
+    for (let gate of Gates) {
+      gate.combine(terms, val);
     }
-    if (vterm == term) {
-      solutions.push([symbols[val.idx][0], [symbols[val.idx][1]]]);
+    if ((vterm[1] | mask) == term) {
+      solutions.push([vterm[0], vterm[2]]);
     }
   } else {
-    for(let i = 0; i < Gates.length; i++) {
-      let gate = Gates[i];
-      const t = gate.combine(val, vterm);
-      const t_m = t;
+    for (let gate of Gates) {
+      const t = gate.combine(terms, val);
+      const t_m = t | mask;
       if (t_m == term || t_m == neg_term) {
-        let symbol_string = symbols[val.idx][0];
+        let symbol_string = vterm[0];
         let current = val.prev;
         let wire_lamps = new Array(count);
         let index = count;
-        wire_lamps[--index] = symbols[val.idx][1];
+        
         do {
-          let cterm = symbols[current.idx];
+          let cterm = terms[current.idx];
           symbol_string = cterm[0] + ", " + symbol_string;
-          wire_lamps[--index] = cterm[1];
+          wire_lamps[--index] = cterm[2];
           current = current.prev;
         } while(current != null);
         
@@ -90,23 +87,18 @@ function makeExpressionsBFS({
   mask,
   callback = identity,
 }) {
-  let legalTerms = Terms[varCount];
-  let neg_term;
-  let symbols;
-  if(callback == identity) {
-    neg_term = negate(term, varCount); 
-    term = term ^ mask;
-    symbols = legalTerms.map(term => [term[0], term[2]]);
-    legalTerms = legalTerms.map(term => term[1] & ~mask);
-  }
+  const neg_term = negate(term ^ mask, varCount) | mask; 
+  const legalTerms = Terms[varCount];
+  
   // Initialize the queue with the individual terms.
   let queue = new Queue();
   let next_queue = new Queue();
   
   for(let i = 0; i < legalTerms.length; i++) {
     next_queue.enqueue({
-      CACHE_0: 0,
-      CACHE_1: 0,
+      XOR_CACHE_O: 0,
+      XOR_CACHE_E: 0,
+      AND_CACHE: 0,
       prev: null,
       next: null,
       idx: i,
@@ -125,15 +117,13 @@ function makeExpressionsBFS({
     
     while (!queue.empty()) {
       let val = queue.dequeue();
-      callback(legalTerms, val, count, solutions, term, neg_term, mask, symbols);
+      callback(legalTerms, val, count, solutions, term, neg_term, mask);
       if (count < maxDepth) {
-        if((val.CACHE_1 & term) && (val.CACHE_1 & neg_term)) {
-            continue;
-        }
         for (let i = val.idx + 1; i < legalTerms.length; i++) {
           next_queue.enqueue({ 
-            CACHE_0: 0,
-            CACHE_1: 0,
+            XOR_CACHE_O: 0,
+            XOR_CACHE_E: 0,
+            AND_CACHE: 0,
             prev: val,
             next: null,
             idx: i,
@@ -146,48 +136,43 @@ function makeExpressionsBFS({
   return solutions.length > 0 ? solutions : undefined;
 }
 
-let module = Module({});
-async function wasmWorkerWrapper(varCount, maxDepth, term, mask) {
-  let results = (await module).makeExpressionsBFS(varCount, maxDepth, term, mask);
-  if (results.length == 0) {
-    return undefined;
-  }
-  console.log(results);
-  return results;
-}
-
-onmessage = async (e) => {
+onmessage = (e) => {
   switch (e.data.action) {
     case "search":
+      const maskedDictionary = Dictionary[e.data.varCount - 2].map((a) => [
+        a[0] | e.data.mask,
+        a[1],
+      ]);
 
-      let results = await wasmWorkerWrapper(
-        e.data.varCount, e.data.maxDepth, e.data.term, e.data.mask
-      );
-      
-      if(results != undefined) {
-        postMessage({ action: "result", results });
+      if (maskedDictionary.find((a) => a[0] == e.data.term)) {
+        const results = makeExpressionsBFS({
+          varCount: e.data.varCount,
+          maxDepth: e.data.maxDepth,
+          term: e.data.term,
+          mask: e.data.mask,
+        });
+        postMessage({ action: "result", results: results });
       } else {
-        let dictionary = Dictionary[e.data.varCount - 2];
-        let maskedDictionary = new Map();
-        for(let i = 0; i < dictionary.length; i++) {
-          let dict = dictionary[i];
-          let maskedTerm = dict[0] | e.data.mask;
-          let complexity = dict[1];
-          if(maskedDictionary.has(maskedTerm)) {
-            if(complexity < maskedDictionary.get(maskedTerm)) {
-              maskedDictionary.set(maskedTerm, complexity);
+        // Preprocessing...
+        let maskedDictionaryMap = new Map();
+        for(let i = 0; i < maskedDictionary.length; i++) {
+          let [term, complexity] = maskedDictionary[i];
+          if(maskedDictionaryMap.has(term)) {
+            if(complexity < maskedDictionaryMap.get(term)) {
+              maskedDictionaryMap.set(term, complexity);
             }
           } else {
-            maskedDictionary.set(maskedTerm, complexity);
+            maskedDictionaryMap.set(term, complexity);
           }
         }
         // find the two terms of the shortest combined complexity that, when XOR'ed together, give the searched term
         let pair = [],
           min = Infinity;
-        for (let term0 of maskedDictionary) {
+        for (let i = 0; i < maskedDictionary.length; i++) {
+          let term0 = maskedDictionary[i];
           let complementary = (e.data.term ^ term0[0]) | e.data.mask;
-          if(maskedDictionary.has(complementary)) {
-            let term1Complexity = maskedDictionary.get(complementary);
+          if(maskedDictionaryMap.has(complementary)) {
+            let term1Complexity = maskedDictionaryMap.get(complementary);
             if (term1Complexity + term0[1] < min) {
               pair = [complementary, term0[0]];
               min = term1Complexity + term0[1];
