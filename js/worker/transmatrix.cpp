@@ -1,12 +1,18 @@
 #include <algorithm>
 #include <array>
 #include <cstdint>
+
+#ifdef __EMSCRIPTEN__
 #include <emscripten/bind.h>
+#else
+#include <iostream>
+#endif
+
 #include <optional>
+#include <ranges>
 #include <string>
 #include <unordered_map>
 #include <utility>
-#include <valarray>
 #include <vector>
 
 constexpr std::pair<uint16_t, uint8_t> Dictionary[][12960] = {
@@ -6578,27 +6584,24 @@ constexpr std::pair<uint16_t, uint8_t> Dictionary[][12960] = {
  * @returns {boolean}
  */
 
-size_t total;
-size_t invertible;
-__attribute__((noinline)) bool isInvertible(const std::vector<uint16_t>& matrix) {
-  total++;
-  uint16_t basis[16] = { 0 };
-  for(auto curr = matrix.begin(); curr < matrix.end(); curr++) {
+int total = 0;
+__attribute__((noinline)) bool
+isInvertible(const std::vector<uint16_t> &matrix) {
+  uint16_t basis[16]{};
+  auto curr = matrix.cbegin();
+  do {
     uint16_t v = *curr;
-    for(size_t b = matrix.size(); b--;) {
-      if ((v >> b) & 1) {
-        if (!basis[b]) {
-          // new pivot at bit b; insert into basis
-          basis[b] = v;
-          goto next_loop;
-        }
-        // eliminate b‑th bit
-        v ^= basis[b];
+    do {
+      uint16_t b = 15 - __builtin_clzs(v);
+      if (!basis[b]) {
+        basis[b] = v;
+        break;
       }
-    }
-    return false;
-    next_loop:;
-  }
+      v ^= basis[b];
+      if (!v)
+        return false;
+    } while (true);
+  } while (++curr < matrix.cend());
   return true;
 }
 
@@ -6610,16 +6613,11 @@ __attribute__((noinline)) bool invertMatrix(const std::vector<uint16_t> &matrix,
   }
   uint32_t mask = 1;
   for (auto currI = scratch.begin(); currI < scratch.end(); currI++) {
-    bool found = false;
     for (auto currJ = currI; currJ < scratch.end(); currJ++) {
       if ((*currJ) & mask) {
         std::swap(*currI, *currJ);
-        found = true;
         break;
       }
-    }
-    if (!found) {
-      return false;
     }
     for (auto currJ = currI + 1; currJ < scratch.end(); currJ++) {
       if ((*currJ) & mask) {
@@ -6641,7 +6639,6 @@ __attribute__((noinline)) bool invertMatrix(const std::vector<uint16_t> &matrix,
   for (size_t i = 0; i < scratch.size(); i++) {
     output[i] = scratch[i] >> 16;
   }
-  invertible++;
   return true;
 }
 
@@ -6694,33 +6691,32 @@ struct Precursor {
   uint8_t lampCount;
   uint16_t precursor;
   uint16_t combination;
-  Precursor(uint8_t lc, uint16_t p, uint16_t c) : lampCount(lc), precursor(p), combination(c) {}
+  Precursor(uint8_t lc, uint16_t p, uint16_t c)
+      : lampCount(lc), precursor(p), combination(c) {}
 };
 
 size_t sizes[] = {16, 256, 12960};
 
 __attribute__((noinline))
-std::pair<std::vector<Precursor>, std::unordered_map<uint16_t, uint8_t>>
-getGoodTerms(size_t varCount, const std::vector<uint16_t> &terms, uint16_t mask) {
+std::pair<std::vector<uint16_t>, std::unordered_map<uint16_t, uint8_t>>
+getGoodTerms(size_t varCount, const std::vector<uint16_t> &terms,
+             uint16_t mask) {
   const auto &dictionary = Dictionary[varCount - 2];
   size_t size = sizes[varCount - 2];
   std::unordered_map<uint16_t, uint8_t> maskedDictionary;
   for (size_t i = 0; i < size; i++) {
-    const auto &dict = dictionary[i];
-    uint16_t maskedTerm = std::get<0>(dict) | mask;
-    uint8_t complexity = std::get<1>(dict);
-    auto it = maskedDictionary.find(maskedTerm);
-    if (it != maskedDictionary.end()) {
+    auto [term, complexity] = dictionary[i];
+    auto [it, inserted] = maskedDictionary.try_emplace(term | mask, complexity);
+    if (!inserted) {
       if (complexity < it->second) {
         it->second = complexity;
       }
-    } else {
-      maskedDictionary.emplace(maskedTerm, complexity);
     }
   }
 
   std::vector<Precursor> precursorTerms;
-  for (uint16_t combination = 1; combination < 1 << terms.size(); combination++) {
+  for (uint16_t combination = 1; combination < 1 << terms.size();
+       combination++) {
     uint16_t bitmask = 0b1;
     uint16_t precursor = 0b0;
     for (size_t i = 0; i < terms.size(); i++) {
@@ -6735,22 +6731,25 @@ getGoodTerms(size_t varCount, const std::vector<uint16_t> &terms, uint16_t mask)
       precursorTerms.emplace_back(minIt->second, precursor, combination);
     }
   }
-  std::stable_sort(precursorTerms.begin(), precursorTerms.end(), [](const Precursor &a, const Precursor &b) -> bool {
-    return a.lampCount < b.lampCount;
-  });
+  std::stable_sort(precursorTerms.begin(), precursorTerms.end(),
+                   [](const Precursor &a, const Precursor &b) -> bool {
+                     return a.lampCount < b.lampCount;
+                   });
 
   maskedDictionary.clear(); // We can reuse this dictionary.
 
-  std::vector<Precursor> realPrecursorTerms;
+  std::vector<uint16_t> realPrecursorTerms;
   for (size_t i = 0; i < precursorTerms.size(); i++) {
     const auto &term = precursorTerms[i];
-    auto it = maskedDictionary.find(term.precursor);
-    if (it == maskedDictionary.end()) { // pointless
-      realPrecursorTerms.emplace_back(term);
-      maskedDictionary.emplace(term.precursor, term.lampCount);
+
+    auto [it, inserted] =
+        maskedDictionary.try_emplace(term.precursor, term.lampCount);
+    if (inserted) {
+      realPrecursorTerms.emplace_back(term.combination);
     }
   }
-  return std::make_pair(realPrecursorTerms, maskedDictionary);
+  return std::make_pair(std::move(realPrecursorTerms),
+                        std::move(maskedDictionary));
 }
 
 struct Result {
@@ -6760,6 +6759,25 @@ struct Result {
   uint16_t mask;
 };
 
+typedef std::vector<uint16_t>::const_iterator cit_u16_t;
+
+__attribute__((noinline)) bool nextCombination(std::vector<cit_u16_t> &arr,
+                                               std::vector<uint16_t> &view,
+                                               cit_u16_t n, size_t m) {
+  for (size_t i = m; i-- > 0;) {
+    if (arr[i] < n - (m - i)) {
+      auto last = ++arr[i];
+      view[i] = *last;
+      for (size_t j = i + 1; j < m; j++) {
+        arr[j] = ++last;
+        view[j] = *last;
+      }
+      return true;
+    }
+  }
+  return false;
+}
+
 /**
  * Generates all transition matrices for a given set of terms
  * @param {number[]} terms
@@ -6767,74 +6785,66 @@ struct Result {
  * @returns {number[][]} Partially sorted transition matrices
  */
 std::vector<Result> combinations(size_t varCount,
-                                 std::array<uint16_t, 16> rawTerms,
-                                 size_t termCount, uint16_t mask = 0,
+                                 std::vector<uint16_t> terms, uint16_t mask = 0,
                                  size_t hardLimit = 20) {
-  std::vector<uint16_t> terms;
-  for (size_t i = 0; i < termCount; i++) {
-    terms.emplace_back(rawTerms[i]);
-  }
-  const auto [linearCombinations, goodTermsMap] =
-      getGoodTerms(varCount, terms, mask);
-  std::vector<uint16_t> combination = std::vector<uint16_t>(terms.size());
-  std::vector<uint16_t> lin_combination = std::vector<uint16_t>(terms.size());
+  const size_t terms_size = terms.size();
 
-  size_t dimensionality = goodTermsMap.size();
-  size_t idx = 0;
+  const auto [linCombs, goodTermsMap] = getGoodTerms(varCount, terms, mask);
+
+  std::vector<cit_u16_t> combination(terms_size);
+
+  std::vector<uint16_t> lin_combination(terms_size, linCombs[0]);
+
   std::vector<Result> BigRes;
-  std::vector<uint32_t> invert_scratch = std::vector<uint32_t>(terms.size());
-  std::vector<uint16_t> invert_output = std::vector<uint16_t>(terms.size());
+  std::vector<uint32_t> invert_scratch = std::vector<uint32_t>(terms_size);
+  std::vector<uint16_t> invert_output = std::vector<uint16_t>(terms_size);
+
+  for (size_t i = 0; i < terms_size; i++) {
+    combination[i] = linCombs.cbegin() + i;
+    lin_combination[i] = *combination[i];
+  }
+
   size_t tested = 0;
-  while (idx >= 0) {
-    if (combination[idx] >= dimensionality) {
-      if(idx-- == 0) {
-        break;
-      };
-    } else if (idx == terms.size() - 1) {
-      for (size_t i = 0; i < combination.size(); i++) {
-        lin_combination[i] = linearCombinations[combination[i]].combination;
-      }
-      // We want just... linearly independent matrixes.
-      bool hasInverse = invertMatrix(lin_combination, invert_scratch, invert_output);
-      if (hasInverse) {
-        
-        const auto transitioned = transition(lin_combination, terms);
-        const auto &inverse = invert_output;
-        const auto rows = transpose(inverse);
-        std::vector<uint16_t> new_transitioned;
-        std::unordered_map<uint16_t, uint16_t> transitionedMap;
-        for (size_t i = 0; i < transitioned.size(); i++) {
-          uint16_t itransition = transitioned[i];
-          auto itranIt = transitionedMap.find(itransition);
-          if (itranIt != transitionedMap.end()) {
-            itranIt->second ^= rows[i];
-          } else {
-            transitionedMap.emplace(itransition, rows[i]);
-            new_transitioned.emplace_back(itransition);
-          }
+  do {
+    // We want just... linearly independent matrixes.
+    bool hasInverse = isInvertible(lin_combination);
+    if (hasInverse) {
+      invertMatrix(lin_combination, invert_scratch, invert_output);
+      const auto transitioned = transition(lin_combination, terms);
+      const auto &inverse = invert_output;
+      const auto rows = transpose(inverse);
+      std::vector<uint16_t> new_transitioned;
+      std::unordered_map<uint16_t, uint16_t> transitionedMap;
+
+      for (size_t i = 0; i < transitioned.size(); i++) {
+        uint16_t itransition = transitioned[i];
+        auto itranIt = transitionedMap.find(itransition);
+        if (itranIt != transitionedMap.end()) {
+          itranIt->second ^= rows[i];
+        } else {
+          transitionedMap.emplace(itransition, rows[i]);
+          new_transitioned.emplace_back(itransition);
         }
-        std::vector<uint16_t> new_rows;
-        uint8_t complexity_sum = 0;
-        for (size_t i = 0; i < new_transitioned.size(); i++) {
-          complexity_sum += goodTermsMap.at(new_transitioned[i]);
-          new_rows.emplace_back(transitionedMap.at(new_transitioned[i]));
-        }
-        BigRes.emplace_back(
-            Result{complexity_sum, new_rows, new_transitioned, mask});
-      }
-      tested++;
-      if (BigRes.size() >= hardLimit) {
-        break;
       }
 
-    } else {
-      idx++;
-      combination[idx] = combination[idx - 1];
+      std::vector<uint16_t> new_rows;
+
+      uint8_t complexity_sum = 0;
+
+      for (size_t i = 0; i < new_transitioned.size(); i++) {
+        complexity_sum += goodTermsMap.at(new_transitioned[i]);
+        new_rows.emplace_back(transitionedMap.at(new_transitioned[i]));
+      }
+
+      BigRes.emplace_back(Result{complexity_sum, std::move(new_rows),
+                                 std::move(new_transitioned), mask});
     }
-    if (idx >= 0) {
-      combination[idx]++;
+    tested++;
+    if (BigRes.size() >= hardLimit) {
+      break;
     }
-  }
+  } while (nextCombination(combination, lin_combination, linCombs.cend(),
+                           terms_size));
   std::stable_sort(BigRes.begin(), BigRes.end(),
                    [](const auto &a, const auto &b) -> bool {
                      return a.complexity < b.complexity;
@@ -6844,25 +6854,6 @@ std::vector<Result> combinations(size_t varCount,
 
 EMSCRIPTEN_BINDINGS(my_module) {
   emscripten::function("combinations", &combinations);
-  emscripten::value_array<std::array<uint16_t, 16>>("vuuu")
-      .element(emscripten::index<0>())
-      .element(emscripten::index<1>())
-      .element(emscripten::index<2>())
-      .element(emscripten::index<3>())
-      .element(emscripten::index<4>())
-      .element(emscripten::index<5>())
-      .element(emscripten::index<6>())
-      .element(emscripten::index<7>())
-      .element(emscripten::index<8>())
-      .element(emscripten::index<9>())
-      .element(emscripten::index<10>())
-      .element(emscripten::index<11>())
-      .element(emscripten::index<12>())
-      .element(emscripten::index<13>())
-      .element(emscripten::index<14>())
-      .element(emscripten::index<15>());
-  emscripten::register_vector<uint16_t>("vu16");
-  emscripten::register_vector<Result>("vResult");
   emscripten::value_object<Result>("_")
       .field("complexity", &Result::complexity)
       .field("rows", &Result::rows)
@@ -6870,48 +6861,32 @@ EMSCRIPTEN_BINDINGS(my_module) {
       .field("mask", &Result::mask);
 }
 
-// int main() {
-//   size_t varCount = 4;
-//   std::array<uint16_t, 16> rawTerms = {
-//       0b1110011011001100, 0b1111011011001100, 0b1110111011001100,
-//       0b1110111011001111, 0b1110111011111100, 0b1110111011111101,
-//       0b1111111111111111,
+namespace emscripten {
+namespace internal {
 
-//   };
-//   size_t termCount = 7;
-//   uint16_t mask = 0b1110000000000000;
-//   //   size_t varCount = 2;
-//   // std::array<uint16_t, 16> rawTerms = {0b1100, 0b0011, 0b1111};
-//   // size_t termCount = 3;
-//   // uint16_t mask = 0b0;
-//   auto result = combinations(varCount, rawTerms, termCount, mask);
-//   for (auto &res : result) {
-//     std::cout << res.mask << std::endl;
-//   }
-//   std::cout << total << std::endl;
-//   std::cout << invertible << std::endl;
-// }
+template <typename T, typename Allocator>
+struct BindingType<std::vector<T, Allocator>> {
+  using ValBinding = BindingType<val>;
+  using WireType = ValBinding::WireType;
 
-// onmessage = (e) => {
-//   switch (e.data.action) {
-//     case "generate":
-//       const matrices = combinations({
-//         varCount: e.data.varCount,
-//         terms: e.data.terms,
-//         mask: e.data.mask,
-//         hardLimit: e.data.hardLimit,
-//       });
-//       matrices.sort((a, b) => a.complexity - b.complexity);
-//       postMessage({
-//         action: "matrices",
-//         results: {
-//           varCount: e.data.varCount,
-//           matrices,
-//           outputs: e.data.terms.length
-//         },
-//       });
-//       break;
-//     default:
-//       break;
-//   }
-// };
+  static WireType toWireType(const std::vector<T, Allocator> &vec, rvp::default_tag) {
+    return ValBinding::toWireType(val::array(vec), rvp::default_tag{});
+  }
+
+  static std::vector<T, Allocator> fromWireType(WireType value) {
+    return vecFromJSArray<T>(ValBinding::fromWireType(value));
+  }
+};
+
+template <typename T>
+struct TypeID<
+    T,
+    typename std::enable_if_t<std::is_same<
+        typename Canonicalized<T>::type,
+        std::vector<typename Canonicalized<T>::type::value_type,
+                    typename Canonicalized<T>::type::allocator_type>>::value>> {
+  static constexpr TYPEID get() { return TypeID<val>::get(); }
+};
+
+} // namespace internal
+} // namespace emscripten

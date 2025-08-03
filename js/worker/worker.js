@@ -198,18 +198,18 @@ onmessage = async (e) => {
           }
         }
 
-        const results1 = makeExpressionsBFS({
-          varCount: e.data.varCount,
-          maxDepth: e.data.maxDepth,
-          term: pair[0],
-          mask: e.data.mask,
-        });
-        const results2 = makeExpressionsBFS({
-          varCount: e.data.varCount,
-          maxDepth: e.data.maxDepth,
-          term: pair[1],
-          mask: e.data.mask,
-        });
+        const results1 = await wasmWorkerWrapper(
+          e.data.varCount,
+          e.data.maxDepth,
+          pair[0],
+          e.data.mask,
+        );
+        const results2 = await wasmWorkerWrapper(
+          e.data.varCount,
+          e.data.maxDepth,
+          pair[1],
+          e.data.mask,
+        );
 
         postMessage({
           action: "double",

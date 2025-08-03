@@ -209,7 +209,7 @@ export default class UIStateHandler {
     let text = `<table>`;
     for (let i = 0; i < rows.length; i++) {
       let num = transitioned[i].toString(2).padStart(2 ** varCount, "0");
-      let txtMask = mask.toString(2).padStart(16, "0");
+      let txtMask = mask.toString(2).padStart(2 ** varCount, "0");
       num = num.split('').map((a, idx) => (txtMask[idx] == "1" ? "x" : a)).join('');
       text += `<tr><td>${num}</td>`;
       for(let j = 0; j < outputs; j++) {

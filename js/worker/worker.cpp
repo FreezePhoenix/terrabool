@@ -164,9 +164,27 @@ uint16_t XOR_GATE(Chain* numbers, uint16_t mask) {
     return mask;
 }
 
+
+
+template<typename T, size_t S>
+struct inplace_vector {
+    using value_type = T;
+    constexpr static size_t size = S;
+    std::array<T, S> backing;
+    size_t _size;
+    void resize(size_t size) {this->_size = size;}
+    auto end() {return backing.begin() + this->_size;}
+    auto cend() const {return backing.cbegin() + this->_size;}
+    auto begin() {return backing.begin();}
+    auto cbegin() const {return backing.cbegin();}
+    T& operator[](std::size_t idx)       { return backing[idx]; }
+    const T& operator[](std::size_t idx) const { return backing[idx]; }
+};
+
+
 struct Solution {
     std::string symbol_string;
-    std::array<uint8_t, 5> wire_lamps;
+    inplace_vector<uint8_t, 5> wire_lamps;
 };
 
 void identity(const uint16_t* legalTerms, Chain* val, size_t count, std::vector<Solution>& solutions, uint16_t term, uint16_t neg_term, const std::pair<std::string_view, uint8_t>* symbols) {
@@ -183,7 +201,8 @@ void identity(const uint16_t* legalTerms, Chain* val, size_t count, std::vector<
                 Solution& solution = solutions.emplace_back();
 
                 std::string& symbol_string = solution.symbol_string;
-                std::array<uint8_t, 5>& wire_lamps = solution.wire_lamps;
+                auto& wire_lamps = solution.wire_lamps;
+                wire_lamps.resize(count);
                 symbol_string = std::get<0>(symbols[val->idx]);
                 symbol_string.push_back(')');
                 const Chain* current = val->prev;
@@ -205,7 +224,8 @@ void identity(const uint16_t* legalTerms, Chain* val, size_t count, std::vector<
                 Solution& solution = solutions.emplace_back();
 
                 std::string& symbol_string = solution.symbol_string;
-                std::array<uint8_t, 5>& wire_lamps = solution.wire_lamps;
+                auto& wire_lamps = solution.wire_lamps;
+                wire_lamps.resize(count);
                 symbol_string = std::get<0>(symbols[val->idx]);
                 symbol_string.push_back(')');
                 const Chain* current = val->prev;
@@ -277,14 +297,73 @@ std::vector<Solution> makeExpressionsBFS(size_t varCount, size_t maxDepth, uint1
 
 EMSCRIPTEN_BINDINGS(my_module) {
     emscripten::function("makeExpressionsBFS", &makeExpressionsBFS);
-    emscripten::register_vector<Solution>("SolutionVector");
     emscripten::value_array<Solution>("Solution")
         .element(&Solution::symbol_string)
         .element(&Solution::wire_lamps);
-    emscripten::value_array<std::array<uint8_t, 5>>("_")
-        .element(emscripten::index<0>())
-        .element(emscripten::index<1>())
-        .element(emscripten::index<2>())
-        .element(emscripten::index<3>())
-        .element(emscripten::index<4>());
 }
+
+template <typename T, size_t S, typename... Policies>
+inplace_vector<T, S> inplacevecFromJSArray(const emscripten::val& v, Policies... policies) {
+  const uint32_t l = v["length"].as<uint32_t>();
+
+  inplace_vector<T, S> rv;
+  rv.resize(l);
+  for (uint32_t i = 0; i < l; ++i) {
+    rv[i] = v[i].as<T>(std::forward<Policies>(policies)...);
+  }
+
+  return rv;
+}
+
+namespace emscripten {
+namespace internal {
+
+template <typename T, typename Allocator>
+struct BindingType<std::vector<T, Allocator>> {
+  using ValBinding = BindingType<val>;
+  using WireType = ValBinding::WireType;
+
+  static WireType toWireType(const std::vector<T, Allocator> &vec, rvp::default_tag) {
+    return ValBinding::toWireType(val::array(vec), rvp::default_tag{});
+  }
+
+  static std::vector<T, Allocator> fromWireType(WireType value) {
+    return vecFromJSArray<T>(ValBinding::fromWireType(value));
+  }
+};
+
+template <typename T, size_t S>
+struct BindingType<inplace_vector<T, S>> {
+  using ValBinding = BindingType<val>;
+  using WireType = ValBinding::WireType;
+
+  static WireType toWireType(const inplace_vector<T, S> &vec, rvp::default_tag) {
+    return ValBinding::toWireType(val::array(vec.cbegin(), vec.cend()), rvp::default_tag{});
+  }
+
+  static inplace_vector<T, S> fromWireType(WireType value) {
+    return inplacevecFromJSArray<T, S>(ValBinding::fromWireType(value));
+  }
+};
+
+template <typename T>
+struct TypeID<
+    T,
+    typename std::enable_if_t<std::is_same<
+        typename Canonicalized<T>::type,
+        std::vector<typename Canonicalized<T>::type::value_type,
+                    typename Canonicalized<T>::type::allocator_type>>::value>> {
+  static constexpr TYPEID get() { return TypeID<val>::get(); }
+};
+
+template <typename T>
+struct TypeID<
+    T,
+    typename std::enable_if_t<std::is_same<
+        typename Canonicalized<T>::type,
+        inplace_vector<typename Canonicalized<T>::type::value_type, Canonicalized<T>::type::size>>::value>> {
+  static constexpr TYPEID get() { return TypeID<val>::get(); }
+};
+
+} // namespace internal
+} // namespace emscripten
