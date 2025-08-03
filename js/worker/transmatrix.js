@@ -11,6 +11,7 @@ SOLUTION: prune linear combination set (what the getGoodTerms function does) at 
 */
 
 import { Dictionary } from "../data/dictionary.js";
+import Module from "./transmatrix_wasm.mjs"
 
 /**
  * tests if a number is a power of two
@@ -59,6 +60,22 @@ function transition(rows, terms) {
     }
   }
   return newTerms;
+}
+
+/**
+ * We are tasked with transposing an array of numbers as if the bits formed a matrix.
+ * We assume they are square, but that's fine for the uses we have.
+ */
+function transpose(arrayOfNums) {
+  let result = [];
+  for(let i = 0; i < arrayOfNums.length; i++) {
+    let beginning = (arrayOfNums[0] >> i) & 1;
+    for(let j = 1; j < arrayOfNums.length; j++) {
+      beginning |= ((arrayOfNums[j] >> i) & 1) << j;
+    }
+    result[i] = beginning;
+  }
+  return result;
 }
 
 /**
@@ -146,16 +163,32 @@ function combinations({ varCount, terms, mask = 0, hardLimit = 20 }) {
       // Check the matrix and add it to possible solutions list.
       if (isInvertible(lin_combinations)) {
         const transitioned = transition(lin_combinations, terms);
-        const lampSum = transitioned.reduce(
+        const inverse = getInverseMatrix(lin_combinations);
+        let rows = transpose(inverse);
+        let new_transitioned = [];
+        let transitionedMap = new Map();
+        for(let i = 0; i < transitioned.length; i++) {
+          let itransition = transitioned[i];
+          if(transitionedMap.has(itransition)) {
+            // We XOR instead of OR here, even though they *should* be identical, but just in case the system decides to use the same term twice for some reason.
+            transitionedMap.set(itransition, transitionedMap.get(itransition) ^ rows[i]);
+          } else {
+            transitionedMap.set(itransition, rows[i]);
+            new_transitioned.push(itransition);
+          }
+        }
+        let new_rows = [];
+        for(let i = 0; i < new_transitioned.length; i++) {
+          new_rows.push(transitionedMap.get(new_transitioned[i]));
+        }
+        const lampSum = new_transitioned.reduce(
           (acc, term) => acc + goodTermsMap.get(term),
           0
         );
-        const inverse = getInverseMatrix(lin_combinations);
-
         BigRes.push({
           complexity: lampSum,
-          rows: inverse,
-          transitioned: transitioned,
+          rows: new_rows,
+          transitioned: new_transitioned,
           mask: mask,
         });
       }
@@ -203,19 +236,23 @@ function getInverseMatrix(lin_combinations) {
   return inverse;
 }
 
-onmessage = (e) => {
+let module = Module({});
+
+async function wasmWorkerWrapper(varCount, terms, mask, hardLimit) {
+  return (await module).combinations(varCount, terms, mask, hardLimit);
+}
+
+onmessage = async (e) => {
   switch (e.data.action) {
     case "generate":
-      const matrices = combinations({
-        varCount: e.data.varCount,
-        terms: e.data.terms,
-        mask: e.data.mask,
-        hardLimit: e.data.hardLimit,
-      });
-      matrices.sort((a, b) => a[0] - b[0]);
+      const matrices = await wasmWorkerWrapper(e.data.varCount, e.data.terms, e.data.mask, e.data.hardLimit);
       postMessage({
         action: "matrices",
-        results: matrices,
+        results: {
+          varCount: e.data.varCount, 
+          matrices,
+          outputs: e.data.terms.length
+        },
       });
       break;
     default:
