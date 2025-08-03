@@ -149,14 +149,10 @@ function makeExpressionsBFS({
 let module = Module({});
 async function wasmWorkerWrapper(varCount, maxDepth, term, mask) {
   let results = (await module).makeExpressionsBFS(varCount, maxDepth, term, mask);
-  if (results.size() == 0) {
+  if (results.length == 0) {
     return undefined;
   }
-  let real_results = [];
-  for (let i = 0, size = results.size(); i < size; i++) {
-    real_results.push(results.get(i));
-  }
-  return real_results;
+  return results;
 }
 
 onmessage = async (e) => {

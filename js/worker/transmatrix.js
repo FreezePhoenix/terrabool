@@ -238,35 +238,7 @@ function getInverseMatrix(lin_combinations) {
 
 let module = Module({});
 async function wasmWorkerWrapper(varCount, terms, mask, hardLimit) {
-  let rawTerms = [];
-  for (let i = 0; i < terms.length; i++) {
-    rawTerms[i] = terms[i];
-  }
-  for (let i = terms.length; i < 16; i++) {
-    rawTerms[i] = 0;
-  }
-  let results = (await module).combinations(varCount, rawTerms, terms.length, mask, hardLimit);
-  let realResults = [];
-  for (let i = 0; i < results.size(); i++) {
-    let temp = results.get(i);
-    let newRows = [];
-    let newTransitioned = [];
-    for (let j = 0; j < temp.rows.size(); j++) {
-      newRows.push(temp.rows.get(j));
-    }
-    for (let j = 0; j < temp.transitioned.size(); j++) {
-      newTransitioned.push(temp.transitioned.get(j));
-    }
-    let result = {
-      complexity: temp.complexity,
-      rows: newRows,
-      transitioned: newTransitioned,
-      mask: temp.mask
-    }
-    realResults.push(result);
-  }
-  console.log(realResults);
-  return realResults;
+  return (await module).combinations(varCount, terms, mask, hardLimit);
 }
 
 
